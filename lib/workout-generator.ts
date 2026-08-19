@@ -1,4 +1,5 @@
 import { EXERCISE_LIBRARY, type ExerciseDef, type MuscleGroup, type Equipment } from "@/lib/exercises";
+import type { Goal } from "@/lib/calculations";
 import type { Workout, Exercise } from "@/lib/workouts";
 
 export type SplitStyle = "full_body" | "upper_lower" | "push_pull_legs" | "bro_split";
@@ -9,6 +10,16 @@ export type WorkoutPreferences = {
   splitStyle: SplitStyle;
   equipmentPreference: EquipmentPreference;
   favoriteMuscleGroups: MuscleGroup[];
+  /** Objetivo do usuário — ajusta faixa de repetições e descanso prescritos. */
+  goal: Goal;
+  /** Idade — acima de 55 anos, prioriza variações de menor impacto pros exercícios mais pesados. */
+  age: number;
+  /**
+   * Identificador estável (ex: userId) usado só pra distribuir a rotação de exercícios.
+   * Sem isso, duas contas com as mesmas preferências (dias/divisão/equipamento) recebem
+   * exatamente os mesmos exercícios — o que é o comportamento que estamos corrigindo aqui.
+   */
+  seed: string;
 };
 
 export const SPLIT_STYLE_LABELS: Record<SplitStyle, { label: string; description: string }> = {
@@ -57,27 +68,77 @@ function filterByEquipment(list: ExerciseDef[], pref: EquipmentPreference): Exer
   return list.filter((e) => allow[pref].includes(e.equipment));
 }
 
+/** Levantamentos pesados/de maior impacto — evitados como primeira escolha depois dos 55 anos. */
+const HIGH_LOAD_IDS = new Set([
+  "barbell-squat",
+  "barbell-bench",
+  "barbell-row",
+  "hip-thrust",
+  "romanian-deadlift",
+  "dumbbell-stiff-leg-deadlift",
+  "barbell-curl",
+  "pullup",
+  "dips",
+  "hanging-leg-raise",
+]);
+
+function filterByAge(list: ExerciseDef[], age: number): ExerciseDef[] {
+  if (age < 55) return list;
+  const gentler = list.filter((e) => !HIGH_LOAD_IDS.has(e.id));
+  return gentler.length > 0 ? gentler : list;
+}
+
 function rotate<T>(arr: T[], by: number): T[] {
   if (arr.length === 0) return arr;
   const n = ((by % arr.length) + arr.length) % arr.length;
   return [...arr.slice(n), ...arr.slice(0, n)];
 }
 
-function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number): Exercise[] {
-  const count = prefs.favoriteMuscleGroups.includes(group) ? 2 : 1;
+function hashSeed(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+type GoalRepScheme = { repsCompound: string; restCompound: string; repsIsolation: string; restIsolation: string };
+
+const GOAL_REP_OVERRIDES: Record<Goal, GoalRepScheme | null> = {
+  lose_fat: { repsCompound: "12-15", restCompound: "45s", repsIsolation: "15-20", restIsolation: "30s" },
+  recomposition: null,
+  maintain: null,
+  gain_muscle: { repsCompound: "6-10", restCompound: "90s", repsIsolation: "8-12", restIsolation: "60s" },
+};
+
+function prescriptionFor(def: ExerciseDef, goal: Goal): Pick<Exercise, "sets" | "reps" | "rest"> {
+  const overrides = GOAL_REP_OVERRIDES[goal];
+  if (!overrides) return { sets: def.sets, reps: def.reps, rest: def.rest };
+  const isCompound = parseInt(def.rest, 10) >= 75;
+  return isCompound
+    ? { sets: def.sets, reps: overrides.repsCompound, rest: overrides.restCompound }
+    : { sets: def.sets, reps: overrides.repsIsolation, rest: overrides.restIsolation };
+}
+
+function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number, seedNum: number): Exercise[] {
+  const isFullBody = prefs.splitStyle === "full_body";
+  const count = prefs.favoriteMuscleGroups.includes(group) || isFullBody ? 2 : 1;
   const candidates = EXERCISE_LIBRARY.filter((e) => e.muscleGroup === group);
-  const filtered = filterByEquipment(candidates, prefs.equipmentPreference);
-  const pool = filtered.length > 0 ? filtered : candidates;
-  const rotated = rotate(pool, occurrence * count);
-  return rotated
-    .slice(0, count)
-    .map(({ name, sets, reps, rest, demoName }) => ({ name, sets, reps, rest, demoName, muscleGroup: group }));
+  const equipmentFiltered = filterByEquipment(candidates, prefs.equipmentPreference);
+  const ageFiltered = filterByAge(equipmentFiltered.length > 0 ? equipmentFiltered : candidates, prefs.age);
+  const pool = ageFiltered.length > 0 ? ageFiltered : candidates;
+  const rotated = rotate(pool, occurrence * count + seedNum);
+  return rotated.slice(0, count).map((def) => ({
+    name: def.name,
+    ...prescriptionFor(def, prefs.goal),
+    demoName: def.demoName,
+    muscleGroup: group,
+  }));
 }
 
 export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
   const templates = DAY_TEMPLATES[prefs.splitStyle];
   const labelCounts: Record<string, number> = {};
   const workouts: Workout[] = [];
+  const seedNum = hashSeed(prefs.seed);
 
   for (let i = 0; i < prefs.daysPerWeek; i++) {
     const template = templates[i % templates.length];
@@ -86,7 +147,7 @@ export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
     const occurrenceForLabel = labelCounts[template.label];
     const suffix = occurrenceForLabel > 1 ? ` ${String.fromCharCode(64 + occurrenceForLabel)}` : "";
 
-    const exercises = template.groups.flatMap((group) => pickExercisesForGroup(group, prefs, occurrence));
+    const exercises = template.groups.flatMap((group) => pickExercisesForGroup(group, prefs, occurrence, seedNum));
 
     workouts.push({
       id: `dia-${i + 1}`,

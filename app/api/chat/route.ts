@@ -7,6 +7,8 @@ import { computeTargets, type ProfileInput } from "@/lib/calculations";
 import { isPhotoTooLarge } from "@/lib/photo";
 import type { MealTotals } from "@/lib/targets";
 
+export const maxDuration = 60;
+
 type ChatRequestBody = {
   message?: string;
   image?: { data: string; mediaType: string };

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { computeTargets, computeBMI, GOAL_LABELS, type ProfileInput } from "@/lib/calculations";
 import { computeStreakFromDates } from "@/lib/streak";
 import { LogoutButton } from "@/components/LogoutButton";
+import { BiometricSetupButton } from "@/components/BiometricSetupButton";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,7 @@ export default async function ProfilePage() {
           <Ruler size={16} strokeWidth={2} color="var(--dim)" />
           Unidades e preferências
         </div>
+        {session.user.email && <BiometricSetupButton email={session.user.email} />}
         <LogoutButton />
       </div>
     </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { X, FlaskConical, Watch } from "lucide-react";
+import { X, FlaskConical, Watch, ImageIcon } from "lucide-react";
 import { toDateKey } from "@/lib/date";
+import { useCameraStream } from "@/lib/useCameraStream";
 
 type Stage = "idle" | "scanning" | "result" | "error";
 
@@ -50,6 +51,7 @@ export function WorkoutScanFlow({
   const [errorMessage, setErrorMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
 
   if (!open) return null;
 
@@ -70,39 +72,49 @@ export function WorkoutScanFlow({
     setStage("result");
   }
 
+  async function analyze(data: string, mediaType: string, preview: string) {
+    setPhotoPreview(preview);
+    setStage("scanning");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: { data, mediaType }, mode: "workout", dayTotals: {} }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || json.type !== "estimate") {
+        setErrorMessage(json.error ?? "Não consegui ler os dados dessa foto.");
+        setStage("error");
+        return;
+      }
+
+      setResult({ ...EMPTY_RESULT, ...json.data });
+      setStage("result");
+    } catch {
+      setErrorMessage("Não consegui conectar à API. Tente novamente.");
+      setStage("error");
+    }
+  }
+
+  function handleCapture() {
+    const shot = capture();
+    if (!shot) return;
+    analyze(shot.data, shot.mediaType, shot.dataUrl);
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async () => {
-      const previewResult = reader.result as string;
-      const [prefix, data] = previewResult.split(",");
+    reader.onload = () => {
+      const result = reader.result as string;
+      const [prefix, data] = result.split(",");
       const mediaType = prefix.match(/data:(.*);base64/)?.[1] ?? "image/jpeg";
-      setPhotoPreview(previewResult);
-      setStage("scanning");
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: { data, mediaType }, mode: "workout", dayTotals: {} }),
-        });
-        const json = await res.json();
-
-        if (!res.ok || json.type !== "estimate") {
-          setErrorMessage(json.error ?? "Não consegui ler os dados dessa foto.");
-          setStage("error");
-          return;
-        }
-
-        setResult({ ...EMPTY_RESULT, ...json.data });
-        setStage("result");
-      } catch {
-        setErrorMessage("Não consegui conectar à API. Tente novamente.");
-        setStage("error");
-      }
+      analyze(data, mediaType, result);
     };
     reader.readAsDataURL(file);
   }
@@ -131,7 +143,25 @@ export function WorkoutScanFlow({
 
       {stage === "idle" && (
         <div className="relative flex-1 bg-black">
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-dim">Visor da câmera</div>
+          {!cameraError && (
+             
+            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+          )}
+          {!cameraReady && !cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-dim">Iniciando câmera...</div>
+          )}
+          {cameraError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center text-sm text-dim">
+              <span>Não consegui acessar a câmera. Você pode escolher uma foto da galeria.</span>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-full bg-panel px-4 py-2 text-[13px] font-semibold text-accent"
+              >
+                <ImageIcon size={14} strokeWidth={2} />
+                Escolher foto
+              </button>
+            </div>
+          )}
           <div className="absolute inset-0 flex flex-col justify-between p-5">
             <div className="flex items-center justify-between">
               <button
@@ -145,13 +175,16 @@ export function WorkoutScanFlow({
               <div className="w-10" />
             </div>
             <div className="flex flex-col items-center gap-3.5 pb-6">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Capturar foto"
-                className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-white"
-              >
-                <span className="block h-[60px] w-[60px] rounded-full bg-accent" />
-              </button>
+              {!cameraError && (
+                <button
+                  onClick={handleCapture}
+                  disabled={!cameraReady}
+                  aria-label="Capturar foto"
+                  className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-white disabled:opacity-50"
+                >
+                  <span className="block h-[60px] w-[60px] rounded-full bg-accent" />
+                </button>
+              )}
               {process.env.NODE_ENV !== "production" && (
                 <button
                   onClick={loadMock}

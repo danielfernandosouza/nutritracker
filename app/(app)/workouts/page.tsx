@@ -21,6 +21,9 @@ export default async function WorkoutsPage() {
     splitStyle: (profile.splitStyle as WorkoutPreferences["splitStyle"]) ?? "push_pull_legs",
     equipmentPreference: (profile.equipmentPreference as WorkoutPreferences["equipmentPreference"]) ?? "machines",
     favoriteMuscleGroups: (profile.favoriteMuscleGroups as MuscleGroup[]) ?? [],
+    goal: profile.goal as WorkoutPreferences["goal"],
+    age: profile.age,
+    seed: session.user.id,
   };
   const workouts = generateWorkoutPlan(prefs);
 
