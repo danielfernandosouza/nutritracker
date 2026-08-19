@@ -118,11 +118,10 @@ function prescriptionFor(def: ExerciseDef, goal: Goal): Pick<Exercise, "sets" | 
     : { sets: def.sets, reps: overrides.repsIsolation, rest: overrides.restIsolation };
 }
 
-function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number, seedNum: number): Exercise[] {
-  // Full body already hits every major muscle group in one session (ACSM guidance: ~4-6
-  // compound exercises per full-body day) — doubling per group here would blow past that
-  // and make the session impractical, so only an explicitly favorited group gets extra volume.
-  const count = prefs.favoriteMuscleGroups.includes(group) ? 2 : 1;
+/** Hard ceiling per session — even with every group favorited, a workout must stay practical (ACSM: ~4-6, up to ~8 for extra emphasis). */
+const MAX_EXERCISES_PER_DAY = 8;
+
+function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number, seedNum: number, count: number): Exercise[] {
   const candidates = EXERCISE_LIBRARY.filter((e) => e.muscleGroup === group);
   const equipmentFiltered = filterByEquipment(candidates, prefs.equipmentPreference);
   const ageFiltered = filterByAge(equipmentFiltered.length > 0 ? equipmentFiltered : candidates, prefs.age);
@@ -149,7 +148,15 @@ export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
     const occurrenceForLabel = labelCounts[template.label];
     const suffix = occurrenceForLabel > 1 ? ` ${String.fromCharCode(64 + occurrenceForLabel)}` : "";
 
-    const exercises = template.groups.flatMap((group) => pickExercisesForGroup(group, prefs, occurrence, seedNum));
+    // Baseline: one exercise per group, so every muscle group is always hit. Favorited groups
+    // get a bonus second exercise, but only while there's still room under the session cap —
+    // otherwise marking many groups as favorite could blow the session back up to 12+.
+    let bonusBudget = MAX_EXERCISES_PER_DAY - template.groups.length;
+    const exercises = template.groups.flatMap((group) => {
+      const wantsBonus = prefs.favoriteMuscleGroups.includes(group) && bonusBudget > 0;
+      if (wantsBonus) bonusBudget--;
+      return pickExercisesForGroup(group, prefs, occurrence, seedNum, wantsBonus ? 2 : 1);
+    });
 
     workouts.push({
       id: `dia-${i + 1}`,
