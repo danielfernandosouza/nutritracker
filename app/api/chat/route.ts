@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { anthropic, MODEL, MEAL_ESTIMATE_TOOL, WORKOUT_ESTIMATE_TOOL, buildSystemPrompt, buildWorkoutSystemPrompt } from "@/lib/anthropic";
+import { prisma } from "@/lib/db";
+import { computeTargets, type ProfileInput } from "@/lib/calculations";
+import type { MealTotals } from "@/lib/targets";
+
+type ChatRequestBody = {
+  message?: string;
+  image?: { data: string; mediaType: string };
+  dayTotals: MealTotals;
+  mode?: "meal" | "workout";
+};
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+export async function POST(request: NextRequest) {
+  const body = (await request.json()) as ChatRequestBody;
+  const { message, image, dayTotals, mode = "meal" } = body;
+
+  if (!message && !image) {
+    return NextResponse.json({ error: "message or image is required" }, { status: 400 });
+  }
+
+  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  if (!profile) {
+    return NextResponse.json({ error: "Perfil não configurado. Complete o cadastro primeiro." }, { status: 400 });
+  }
+  const targets = computeTargets({
+    sex: profile.sex as ProfileInput["sex"],
+    age: profile.age,
+    heightCm: profile.heightCm,
+    weightKg: profile.weightKg,
+    activityLevel: profile.activityLevel as ProfileInput["activityLevel"],
+    goal: profile.goal as ProfileInput["goal"],
+  });
+
+  const content: Anthropic.ContentBlockParam[] = [];
+
+  if (image) {
+    if (!ALLOWED_IMAGE_TYPES.has(image.mediaType)) {
+      return NextResponse.json({ error: "unsupported image type" }, { status: 400 });
+    }
+    content.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: image.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        data: image.data,
+      },
+    });
+  }
+
+  content.push({
+    type: "text",
+    text: message || (mode === "workout" ? "Leia a duração e as calorias gastas nessa foto." : "Estime os valores nutricionais dessa refeição."),
+  });
+
+  const tool = mode === "workout" ? WORKOUT_ESTIMATE_TOOL : MEAL_ESTIMATE_TOOL;
+  const system = mode === "workout" ? buildWorkoutSystemPrompt() : buildSystemPrompt(dayTotals, targets);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      output_config: { effort: "low" },
+      system,
+      tools: [tool],
+      tool_choice: image ? { type: "tool", name: tool.name } : { type: "auto" },
+      messages: [{ role: "user", content }],
+    });
+
+    for (const block of response.content) {
+      if (block.type === "tool_use" && block.name === tool.name) {
+        return NextResponse.json({ type: "estimate", data: block.input });
+      }
+      if (block.type === "text") {
+        return NextResponse.json({ type: "text", text: block.text });
+      }
+    }
+
+    return NextResponse.json({ type: "text", text: "Não consegui gerar uma resposta." });
+  } catch (error) {
+    if (error instanceof Anthropic.AuthenticationError) {
+      return NextResponse.json({ error: "Chave de API inválida ou ausente." }, { status: 500 });
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return NextResponse.json({ error: "Limite de requisições atingido, tente novamente em instantes." }, { status: 429 });
+    }
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json({ error: error.message }, { status: error.status ?? 500 });
+    }
+    throw error;
+  }
+}

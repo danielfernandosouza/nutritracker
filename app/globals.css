@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0b0c;
+  --panel: #17181a;
+  --line: #2a2c2f;
+  --track: #232427;
+  --chalk: #f5f5f2;
+  --dim: #9a9aa0;
+  --accent: #c6ff3d;
+  --protein: #ff6a3d;
+  --fat: #4da6ff;
+  --carb: #ffc93d;
+  --sodium: #ff4d8d;
+  --sugar: #b98cff;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-track: var(--track);
+  --color-chalk: var(--chalk);
+  --color-dim: var(--dim);
+  --color-accent: var(--accent);
+  --color-protein: var(--protein);
+  --color-fat: var(--fat);
+  --color-carb: var(--carb);
+  --color-sodium: var(--sodium);
+  --color-sugar: var(--sugar);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--chalk);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.num {
+  font-family: var(--font-display), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kill the native up/down spinner on number inputs everywhere — we build our
+   own +/- controls where a stepper makes sense, and a bare spinner looks out
+   of place against the rest of the design system. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+@keyframes scanline {
+  0% {
+    top: 6%;
+  }
+  50% {
+    top: 92%;
+  }
+  100% {
+    top: 6%;
+  }
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Splash: timeline authored against a 3.1s intro (Boot 0-0.5s, Reveal 0.5-1.5s,
+   Pulse 1.5-2.4s, Wordmark 2.4-3.1s), then an infinite breathing hold. */
+@keyframes splashIconIntro {
+  0%,
+  16.129% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  29.032% {
+    opacity: 1;
+    transform: scale(0.85);
+  }
+  32.258% {
+    transform: scale(1.12);
+  }
+  35.484% {
+    transform: scale(0.96);
+  }
+  38.71%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splashPulseIntro {
+  0%,
+  48.387% {
+    stroke-dashoffset: 1;
+  }
+  77.419%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes splashWordIntro {
+  0%,
+  77.419% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  93.548% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splashBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.splash-icon-intro {
+  animation:
+    splashIconIntro 3.1s ease-out forwards,
+    splashBreathe 1.4s ease-in-out 3.1s infinite;
+}
+
+.splash-pulse-intro {
+  animation: splashPulseIntro 3.1s ease-in-out forwards;
+}
+
+.splash-word-intro {
+  animation: splashWordIntro 3.1s ease-out forwards;
+}
+
+.splash-icon-simple {
+  animation: splashBreathe 1.4s ease-in-out infinite;
+}
+
+.splash-pulse-simple {
+  stroke-dashoffset: 0;
+}
+
+/* Onboarding step illustrations — small looping scenes that echo each question. */
+@keyframes stepBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes stepBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes stepRipple {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes stepSwing {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes stepBarPulse {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes stepDotOrbit {
+  0% {
+    transform: translate(-38px, -38px) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes stepCheckIn {
+  0%,
+  15% {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  30%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes stepCellGlow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes stepFadeInOut {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes exerciseDemoCrossfade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.step-illustration {
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes restFlashText {
+  0%,
+  100% {
+    color: var(--accent);
+  }
+  50% {
+    color: var(--chalk);
+  }
+}
+
+@keyframes restFlashBg {
+  0%,
+  100% {
+    background: var(--bg);
+  }
+  50% {
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  }
+}

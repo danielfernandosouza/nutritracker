@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Meal {
+  id        String   @id @default(cuid())
+  date      String
+  name      String
+  calories  Float
+  protein   Float
+  carbs     Float
+  fat       Float
+  sodium    Float
+  sugar     Float    @default(0)
+  emoji     String   @default("🍽️")
+  photo     String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model Profile {
+  id             String   @id @default("me")
+  name           String?
+  sex            String
+  age            Int
+  heightCm       Float
+  weightKg       Float
+  activityLevel  String
+  goal           String
+  exerciseNotes  String?
+  mealsPerDay    Int?
+  daysPerWeek          Int?
+  splitStyle           String?
+  equipmentPreference  String?
+  favoriteMuscleGroups String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  date      String
+  weightKg  Float
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model WorkoutLog {
+  id              String   @id @default(cuid())
+  date            String
+  workoutName     String
+  durationMinutes Float?
+  caloriesBurned  Float?
+  photo           String?
+  createdAt       DateTime @default(now())
+
+  @@index([date])
+}
