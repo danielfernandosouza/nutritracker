@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { computeTargets, computeBMI, type ProfileInput } from "@/lib/calculations";
+import { computeWaterTargetMl, computeSleepTargetHours } from "@/lib/wellness";
+import { lastDateKeys } from "@/lib/date";
 
 export async function GET() {
   const session = await auth();
@@ -22,10 +24,22 @@ export async function GET() {
     goal: profile.goal as ProfileInput["goal"],
   };
 
+  const yesterday = lastDateKeys(2)[0];
+  const workedOutYesterday = !!(await prisma.workoutLog.findFirst({
+    where: { userId: session.user.id, date: yesterday },
+    select: { id: true },
+  }));
+  const sleepTarget = computeSleepTargetHours(profile.age, workedOutYesterday);
+
   return NextResponse.json({
     profile,
     targets: computeTargets(input),
     bmi: computeBMI(profile.weightKg, profile.heightCm),
+    wellness: {
+      waterTargetMl: computeWaterTargetMl(input),
+      sleepTargetMinHours: sleepTarget.minHours,
+      sleepTargetMaxHours: sleepTarget.maxHours,
+    },
   });
 }
 

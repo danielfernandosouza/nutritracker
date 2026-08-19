@@ -28,5 +28,7 @@ export const config = {
     "/api/weight/:path*",
     "/api/workout-log/:path*",
     "/api/chat/:path*",
+    "/api/water/:path*",
+    "/api/sleep/:path*",
   ],
 };

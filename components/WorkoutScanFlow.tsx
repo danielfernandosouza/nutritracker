@@ -80,7 +80,7 @@ export function WorkoutScanFlow({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: { data, mediaType }, mode: "workout", dayTotals: {} }),
+        body: JSON.stringify({ images: [{ data, mediaType }], mode: "workout", dayTotals: {} }),
       });
       const json = await res.json();
 

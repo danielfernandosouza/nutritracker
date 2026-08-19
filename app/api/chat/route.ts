@@ -11,24 +11,28 @@ export const maxDuration = 60;
 
 type ChatRequestBody = {
   message?: string;
-  image?: { data: string; mediaType: string };
+  images?: { data: string; mediaType: string }[];
   dayTotals: MealTotals;
   mode?: "meal" | "workout";
 };
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MAX_IMAGES = 3;
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await request.json()) as ChatRequestBody;
-  const { message, image, dayTotals, mode = "meal" } = body;
+  const { message, images, dayTotals, mode = "meal" } = body;
 
-  if (!message && !image) {
-    return NextResponse.json({ error: "message or image is required" }, { status: 400 });
+  if (!message && (!images || images.length === 0)) {
+    return NextResponse.json({ error: "message or images is required" }, { status: 400 });
   }
-  if (image && isPhotoTooLarge(image.data)) {
+  if (images && images.length > MAX_IMAGES) {
+    return NextResponse.json({ error: `Envie no máximo ${MAX_IMAGES} fotos por vez.` }, { status: 400 });
+  }
+  if (images?.some((img) => isPhotoTooLarge(img.data))) {
     return NextResponse.json({ error: "Foto muito grande. Tente uma imagem menor." }, { status: 413 });
   }
 
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   const content: Anthropic.ContentBlockParam[] = [];
 
-  if (image) {
+  for (const image of images ?? []) {
     if (!ALLOWED_IMAGE_TYPES.has(image.mediaType)) {
       return NextResponse.json({ error: "unsupported image type" }, { status: 400 });
     }
@@ -61,9 +65,19 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const hasImages = !!images && images.length > 0;
+  const multiPhotoNote =
+    hasImages && images.length > 1
+      ? " As fotos são ângulos diferentes da mesma refeição — combine as informações de todas elas numa única estimativa."
+      : "";
+
   content.push({
     type: "text",
-    text: message || (mode === "workout" ? "Leia a duração e as calorias gastas nessa foto." : "Estime os valores nutricionais dessa refeição."),
+    text:
+      message ||
+      (mode === "workout"
+        ? "Leia a duração e as calorias gastas nessa foto."
+        : `Estime os valores nutricionais dessa refeição.${multiPhotoNote}`),
   });
 
   const tool = mode === "workout" ? WORKOUT_ESTIMATE_TOOL : MEAL_ESTIMATE_TOOL;
@@ -76,7 +90,7 @@ export async function POST(request: NextRequest) {
       output_config: { effort: "low" },
       system,
       tools: [tool],
-      tool_choice: image ? { type: "tool", name: tool.name } : { type: "auto" },
+      tool_choice: hasImages ? { type: "tool", name: tool.name } : { type: "auto" },
       messages: [{ role: "user", content }],
     });
 

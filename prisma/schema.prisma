@@ -24,6 +24,8 @@ model User {
   weightEntries WeightEntry[]
   workoutLogs   WorkoutLog[]
   authenticators Authenticator[]
+  waterEntries  WaterEntry[]
+  sleepEntries  SleepEntry[]
 }
 
 model Authenticator {
@@ -85,6 +87,29 @@ model WeightEntry {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String
   weightKg  Float
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model WaterEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  amountMl  Int
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model SleepEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  bedTime   String
+  wakeTime  String
   createdAt DateTime @default(now())
 
   @@index([userId, date])

@@ -11,11 +11,15 @@ import { WeeklySummaryCard } from "@/components/WeeklySummaryCard";
 import { DaySummaryModal } from "@/components/DaySummaryModal";
 import { WeightLogSheet } from "@/components/WeightLogSheet";
 import { WorkoutStreakCard } from "@/components/WorkoutStreakCard";
+import { WaterCard } from "@/components/WaterCard";
+import { SleepCard } from "@/components/SleepCard";
+import { SleepLogSheet } from "@/components/SleepLogSheet";
 import { ChatPanel } from "@/components/ChatPanel";
 import { SplashScreen } from "@/components/SplashScreen";
 import { toDateKey, formatDateLabel, lastDateKeys } from "@/lib/date";
 import { EMPTY_TOTALS, type MealTotals } from "@/lib/targets";
 import { computeWeeklySummary } from "@/lib/weekly-summary";
+import { computeSleepFeedback, type SleepFeedback } from "@/lib/wellness";
 import type { Goal } from "@/lib/calculations";
 import type { Meal, MealInput } from "@/lib/types";
 
@@ -38,6 +42,11 @@ export default function HomePage() {
   const [workoutStreak, setWorkoutStreak] = useState(0);
   const [workoutLoggedToday, setWorkoutLoggedToday] = useState(false);
   const [workoutToday, setWorkoutToday] = useState<{ durationMinutes: number | null; caloriesBurned: number | null } | null>(null);
+  const [waterTotalMl, setWaterTotalMl] = useState(0);
+  const [waterTargetMl, setWaterTargetMl] = useState(2000);
+  const [sleepFeedback, setSleepFeedback] = useState<SleepFeedback | null>(null);
+  const [sleepEntry, setSleepEntry] = useState<{ bedTime: string; wakeTime: string } | null>(null);
+  const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
 
   const today = new Date();
   const dateKey = toDateKey(today);
@@ -55,15 +64,35 @@ export default function HomePage() {
       if (!profileRes.ok) throw new Error("profile request failed");
       const profileJson = await profileRes.json();
 
-      const [weekRes, weightRes, workoutLogRes] = await Promise.all([
+      const [weekRes, weightRes, workoutLogRes, waterRes, sleepRes] = await Promise.all([
         fetch(`/api/meals?from=${weekStart}&to=${dateKey}`),
         fetch(`/api/weight?from=${weightHistoryStart}`),
         fetch("/api/workout-log"),
+        fetch(`/api/water?date=${dateKey}`),
+        fetch(`/api/sleep?date=${dateKey}`),
       ]);
       if (!weekRes.ok) throw new Error("meals request failed");
       const weekJson = await weekRes.json();
       const weightJson = weightRes.ok ? await weightRes.json() : { entries: [] };
       const workoutLogJson = workoutLogRes.ok ? await workoutLogRes.json() : { streak: 0, loggedToday: false };
+      const waterJson = waterRes.ok ? await waterRes.json() : { totalMl: 0 };
+      const sleepJson = sleepRes.ok ? await sleepRes.json() : { entry: null };
+
+      setWaterTotalMl(waterJson.totalMl ?? 0);
+      setWaterTargetMl(profileJson.wellness?.waterTargetMl ?? 2000);
+      if (sleepJson.entry) {
+        const { bedTime, wakeTime } = sleepJson.entry;
+        setSleepEntry({ bedTime, wakeTime });
+        setSleepFeedback(
+          computeSleepFeedback(bedTime, wakeTime, {
+            minHours: profileJson.wellness?.sleepTargetMinHours ?? 7,
+            maxHours: profileJson.wellness?.sleepTargetMaxHours ?? 9,
+          }),
+        );
+      } else {
+        setSleepEntry(null);
+        setSleepFeedback(null);
+      }
 
       setTargets(profileJson.targets);
       setProfileName(profileJson.profile.name ?? null);
@@ -153,6 +182,25 @@ export default function HomePage() {
     await loadAll();
   }
 
+  async function handleAddWater(amountMl: number) {
+    setWaterTotalMl((t) => t + amountMl);
+    await fetch("/api/water", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: dateKey, amountMl }),
+    });
+  }
+
+  async function handleSaveSleep(bedTime: string, wakeTime: string) {
+    await fetch("/api/sleep", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: dateKey, bedTime, wakeTime }),
+    });
+    setSleepSheetOpen(false);
+    await loadAll();
+  }
+
   const kcalRemaining = targets ? Math.max(0, targets.calories - totals.calories) : 0;
 
   const firstName = profileName?.trim().split(/\s+/)[0] ?? null;
@@ -219,6 +267,9 @@ export default function HomePage() {
 
           <WorkoutStreakCard streak={workoutStreak} loggedToday={workoutLoggedToday} today={workoutToday} />
 
+          <WaterCard totalMl={waterTotalMl} targetMl={waterTargetMl} onAdd={handleAddWater} />
+          <SleepCard feedback={sleepFeedback} onOpenLog={() => setSleepSheetOpen(true)} />
+
           <div className="mb-6">
             <MacroRows totals={totals} targets={targets} />
           </div>
@@ -254,6 +305,13 @@ export default function HomePage() {
         currentWeightKg={currentWeightKg}
         onClose={() => setWeightSheetOpen(false)}
         onSave={handleLogWeight}
+      />
+      <SleepLogSheet
+        open={sleepSheetOpen}
+        initialBedTime={sleepEntry?.bedTime ?? null}
+        initialWakeTime={sleepEntry?.wakeTime ?? null}
+        onClose={() => setSleepSheetOpen(false)}
+        onSave={handleSaveSleep}
       />
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} dayTotals={totals} />
       {selectedDay && targets && (

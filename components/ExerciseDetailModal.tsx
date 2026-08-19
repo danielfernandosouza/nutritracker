@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { EXERCISE_INSTRUCTIONS } from "@/lib/exercise-instructions";
+import { MUSCLE_GROUP_LABELS } from "@/lib/exercises";
 import type { Exercise } from "@/lib/workouts";
 
 export function ExerciseDetailModal({
@@ -32,6 +33,7 @@ export function ExerciseDetailModal({
             <div className="font-display truncate text-[17px] font-bold">{exercise.name}</div>
             <div className="mt-0.5 text-xs text-dim">
               {exercise.sets}x {exercise.reps} · descanso {exercise.rest}
+              {exercise.muscleGroup && ` · ${MUSCLE_GROUP_LABELS[exercise.muscleGroup]}`}
             </div>
           </div>
           <button

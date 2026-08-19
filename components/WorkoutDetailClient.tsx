@@ -286,6 +286,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
                 </div>
                 <div className="mt-0.5 text-xs text-dim">
                   {ex.sets}x {ex.reps} · descanso {restOverrideSeconds !== null ? formatRestSeconds(restOverrideSeconds) : ex.rest}
+                  {ex.muscleGroup && ` · ${MUSCLE_GROUP_LABELS[ex.muscleGroup]}`}
                 </div>
               </button>
               <button

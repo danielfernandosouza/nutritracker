@@ -84,6 +84,7 @@ function NumberQuestion({
   placeholder,
   step = 1,
   min = 0,
+  onEnter,
 }: {
   unit: string;
   value: string;
@@ -91,6 +92,7 @@ function NumberQuestion({
   placeholder: string;
   step?: number;
   min?: number;
+  onEnter?: () => void;
 }) {
   function bump(delta: number) {
     const current = parseFloat(value) || 0;
@@ -113,6 +115,12 @@ function NumberQuestion({
           inputMode="decimal"
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onEnter?.();
+            }
+          }}
           placeholder={placeholder}
           autoFocus
           className="font-display w-24 bg-transparent text-center text-3xl font-bold outline-none placeholder:text-dim placeholder:text-xl"
@@ -171,6 +179,10 @@ export function OnboardingStepper() {
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function goNext() {
+    if (canAdvance[step]) setStep((s) => s + 1);
   }
 
   const canAdvance: boolean[] = [
@@ -234,9 +246,9 @@ export function OnboardingStepper() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col px-6 pb-10 pt-8">
+    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col px-6 pt-8">
       {step < STEP_COUNT && (
-        <div className="mb-8 flex gap-1.5">
+        <div className="mb-8 flex shrink-0 gap-1.5">
           {Array.from({ length: STEP_COUNT }).map((_, i) => (
             <div
               key={i}
@@ -247,7 +259,7 @@ export function OnboardingStepper() {
         </div>
       )}
 
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         {step === 0 && (
           <div className="flex h-full flex-col justify-center gap-3">
             <StepIllustration variant="welcome" />
@@ -269,6 +281,12 @@ export function OnboardingStepper() {
               inputMode="text"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  goNext();
+                }
+              }}
               placeholder="Seu nome"
               autoFocus
               className="w-full rounded-2xl border border-line bg-panel px-5 py-4 text-center text-lg font-semibold outline-none focus:border-accent"
@@ -292,7 +310,7 @@ export function OnboardingStepper() {
           <div className="flex flex-col gap-4">
             <div className="font-display text-2xl font-bold">Qual sua idade?</div>
             <StepIllustration variant="age" />
-            <NumberQuestion unit="anos" value={form.age} onChange={(v) => set("age", v)} placeholder="idade" step={1} min={1} />
+            <NumberQuestion unit="anos" value={form.age} onChange={(v) => set("age", v)} placeholder="idade" step={1} min={1} onEnter={goNext} />
           </div>
         )}
 
@@ -300,7 +318,7 @@ export function OnboardingStepper() {
           <div className="flex flex-col gap-4">
             <div className="font-display text-2xl font-bold">Qual sua altura?</div>
             <StepIllustration variant="height" />
-            <NumberQuestion unit="cm" value={form.heightCm} onChange={(v) => set("heightCm", v)} placeholder="altura" step={1} min={50} />
+            <NumberQuestion unit="cm" value={form.heightCm} onChange={(v) => set("heightCm", v)} placeholder="altura" step={1} min={50} onEnter={goNext} />
           </div>
         )}
 
@@ -308,7 +326,7 @@ export function OnboardingStepper() {
           <div className="flex flex-col gap-4">
             <div className="font-display text-2xl font-bold">Qual seu peso atual?</div>
             <StepIllustration variant="weight" />
-            <NumberQuestion unit="kg" value={form.weightKg} onChange={(v) => set("weightKg", v)} placeholder="peso" step={0.5} min={20} />
+            <NumberQuestion unit="kg" value={form.weightKg} onChange={(v) => set("weightKg", v)} placeholder="peso" step={0.5} min={20} onEnter={goNext} />
           </div>
         )}
 
@@ -360,6 +378,7 @@ export function OnboardingStepper() {
               placeholder="dias"
               step={1}
               min={1}
+              onEnter={goNext}
             />
           </div>
         )}
@@ -432,6 +451,12 @@ export function OnboardingStepper() {
                 type="number"
                 value={form.mealsPerDay}
                 onChange={(e) => set("mealsPerDay", e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    goNext();
+                  }
+                }}
                 placeholder="Quantidade de refeições"
                 className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-sm outline-none focus:border-accent"
               />
@@ -526,7 +551,7 @@ export function OnboardingStepper() {
       </div>
 
       {step < STEP_COUNT && (
-        <div className="mt-6 flex gap-3">
+        <div className="mt-4 flex shrink-0 gap-3 pb-6 pt-2">
           {step > 0 && (
             <button
               onClick={() => setStep((s) => s - 1)}

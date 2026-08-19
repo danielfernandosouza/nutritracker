@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { X, Sparkles, FlaskConical, ImageIcon } from "lucide-react";
+import { X, Sparkles, FlaskConical, ImageIcon, Plus, Check } from "lucide-react";
 import { toDateKey } from "@/lib/date";
 import { EMPTY_TOTALS } from "@/lib/targets";
 import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
-import { useCameraStream } from "@/lib/useCameraStream";
+import { useCameraStream, type CameraShot } from "@/lib/useCameraStream";
 
-type Stage = "idle" | "scanning" | "result" | "error";
+type Stage = "idle" | "review" | "scanning" | "result" | "error";
+
+const MAX_PHOTOS = 3;
 
 const MOCK_PHOTO_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
@@ -60,7 +62,8 @@ const EDITABLE_FIELDS: { key: keyof MealInput; label: string; unit: string; colo
 
 export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [stage, setStage] = useState<Stage>("idle");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<CameraShot[]>([]);
+  const [resultPhoto, setResultPhoto] = useState<string | null>(null);
   const [meal, setMeal] = useState<MealInput>(EMPTY_MEAL_INPUT);
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +73,8 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
 
   function reset() {
     setStage("idle");
-    setPhotoPreview(null);
+    setPhotos([]);
+    setResultPhoto(null);
     setMeal(EMPTY_MEAL_INPUT);
   }
 
@@ -80,13 +84,23 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   }
 
   function loadMock() {
-    setPhotoPreview(MOCK_PHOTO);
+    setResultPhoto(MOCK_PHOTO);
     setMeal(MOCK_MEAL);
     setStage("result");
   }
 
-  async function analyze(data: string, mediaType: string, preview: string) {
-    setPhotoPreview(preview);
+  function addPhoto(shot: CameraShot) {
+    setPhotos((prev) => [...prev, shot].slice(0, MAX_PHOTOS));
+    setStage("review");
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function analyze() {
+    if (photos.length === 0) return;
+    setResultPhoto(photos[0].dataUrl);
     setStage("scanning");
 
     try {
@@ -108,7 +122,10 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: { data, mediaType }, dayTotals }),
+        body: JSON.stringify({
+          images: photos.map((p) => ({ data: p.data, mediaType: p.mediaType })),
+          dayTotals,
+        }),
       });
       const json = await res.json();
 
@@ -129,7 +146,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   function handleCapture() {
     const shot = capture();
     if (!shot) return;
-    analyze(shot.data, shot.mediaType, shot.dataUrl);
+    addPhoto(shot);
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -142,7 +159,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
       const result = reader.result as string;
       const [prefix, data] = result.split(",");
       const mediaType = prefix.match(/data:(.*);base64/)?.[1] ?? "image/jpeg";
-      analyze(data, mediaType, result);
+      addPhoto({ dataUrl: result, data, mediaType: mediaType as "image/jpeg" });
     };
     reader.readAsDataURL(file);
   }
@@ -151,7 +168,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     await fetch("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: toDateKey(new Date()), ...meal, photo: photoPreview }),
+      body: JSON.stringify({ date: toDateKey(new Date()), ...meal, photo: resultPhoto }),
     });
     window.dispatchEvent(new Event("nutritracker:meal-saved"));
     handleCloseAll();
@@ -191,7 +208,9 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
               >
                 <X size={18} strokeWidth={2} />
               </button>
-              <div className="rounded-full bg-black/50 px-4 py-2 text-[13px] font-semibold text-white">Aponte para o prato</div>
+              <div className="rounded-full bg-black/50 px-4 py-2 text-[13px] font-semibold text-white">
+                {photos.length > 0 ? `Foto ${photos.length + 1} de ${MAX_PHOTOS} — outro ângulo` : "Aponte para o prato"}
+              </div>
               <div className="w-10" />
             </div>
             <div className="flex flex-col items-center gap-3.5 pb-6">
@@ -219,11 +238,61 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
       )}
 
+      {stage === "review" && (
+        <div className="flex flex-1 flex-col p-5">
+          <div className="mb-1 font-display text-lg font-bold">Fotos do prato</div>
+          <p className="mb-4 text-[13px] text-dim">
+            Quer mostrar outro ângulo (ex: de lado, pra IA ver o que ficou escondido)? Pode adicionar até {MAX_PHOTOS} fotos da mesma
+            refeição.
+          </p>
+
+          <div className="mb-5 grid grid-cols-3 gap-2.5">
+            {photos.map((p, i) => (
+              <div key={i} className="relative aspect-square overflow-hidden rounded-2xl border border-line">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.dataUrl} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  onClick={() => removePhoto(i)}
+                  aria-label="Remover foto"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
+                >
+                  <X size={12} strokeWidth={2.5} />
+                </button>
+              </div>
+            ))}
+            {photos.length < MAX_PHOTOS && (
+              <button
+                onClick={() => setStage("idle")}
+                aria-label="Adicionar outro ângulo"
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-line bg-panel text-dim"
+              >
+                <Plus size={20} strokeWidth={2} />
+                <span className="text-[11px] font-semibold">Outro ângulo</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1" />
+
+          <button
+            onClick={analyze}
+            disabled={photos.length === 0}
+            className="font-display flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C] disabled:opacity-50"
+          >
+            <Check size={17} strokeWidth={2.4} />
+            Analisar {photos.length > 1 ? `${photos.length} fotos` : "foto"}
+          </button>
+          <button onClick={reset} className="mt-3 text-center text-sm text-dim underline">
+            Recomeçar
+          </button>
+        </div>
+      )}
+
       {stage === "scanning" && (
         <div className="relative flex-1 bg-black">
-          {photoPreview && (
+          {resultPhoto && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoPreview} alt="Foto do prato" className="h-full w-full object-cover opacity-60" />
+            <img src={resultPhoto} alt="Foto do prato" className="h-full w-full object-cover opacity-60" />
           )}
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="font-display text-base font-bold text-white">Analisando refeição...</div>
@@ -239,7 +308,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
       {stage === "error" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
           <p className="text-sm text-dim">{errorMessage}</p>
-          <button onClick={reset} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-[#0B0B0C]">
+          <button onClick={() => setStage("review")} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-[#0B0B0C]">
             Tentar de novo
           </button>
           <button onClick={handleCloseAll} className="text-sm text-dim underline">
@@ -261,9 +330,9 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="font-display text-lg font-bold">Refeição detectada</div>
           </div>
 
-          {photoPreview ? (
+          {resultPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoPreview} alt="Prato escaneado" className="mb-4 h-40 w-full rounded-2xl object-cover" />
+            <img src={resultPhoto} alt="Prato escaneado" className="mb-4 h-40 w-full rounded-2xl object-cover" />
           ) : (
             <div className="mb-4 flex h-40 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-panel">
               <span className="text-3xl">{meal.emoji}</span>
