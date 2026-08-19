@@ -119,8 +119,10 @@ function prescriptionFor(def: ExerciseDef, goal: Goal): Pick<Exercise, "sets" | 
 }
 
 function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number, seedNum: number): Exercise[] {
-  const isFullBody = prefs.splitStyle === "full_body";
-  const count = prefs.favoriteMuscleGroups.includes(group) || isFullBody ? 2 : 1;
+  // Full body already hits every major muscle group in one session (ACSM guidance: ~4-6
+  // compound exercises per full-body day) — doubling per group here would blow past that
+  // and make the session impractical, so only an explicitly favorited group gets extra volume.
+  const count = prefs.favoriteMuscleGroups.includes(group) ? 2 : 1;
   const candidates = EXERCISE_LIBRARY.filter((e) => e.muscleGroup === group);
   const equipmentFiltered = filterByEquipment(candidates, prefs.equipmentPreference);
   const ageFiltered = filterByAge(equipmentFiltered.length > 0 ? equipmentFiltered : candidates, prefs.age);

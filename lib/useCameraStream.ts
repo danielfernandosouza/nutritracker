@@ -25,7 +25,14 @@ export function useCameraStream(active: boolean) {
     setError(false);
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false })
+      .getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -49,13 +56,17 @@ export function useCameraStream(active: boolean) {
   const capture = useCallback((): CameraShot | null => {
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return null;
+
+    // Cap the longest side so a high-res capture still fits comfortably under the upload size limit.
+    const MAX_DIMENSION = 1600;
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(video.videoWidth, video.videoHeight));
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
     const data = dataUrl.split(",")[1] ?? "";
     return { dataUrl, data, mediaType: "image/jpeg" };
   }, []);
