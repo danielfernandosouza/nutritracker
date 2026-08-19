@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { generateWorkoutPlan, type WorkoutPreferences } from "@/lib/workout-generator";
 import type { MuscleGroup } from "@/lib/exercises";
@@ -9,7 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function WorkoutDetailPage(props: PageProps<"/workouts/[id]">) {
   const { id } = await props.params;
 
-  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
   if (!profile) redirect("/setup");
 
   const prefs: WorkoutPreferences = {

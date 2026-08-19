@@ -2,14 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Flame, Beef, Droplet, Wheat, Waves, Candy, Bell, Ruler, type LucideIcon } from "lucide-react";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { computeTargets, computeBMI, GOAL_LABELS, type ProfileInput } from "@/lib/calculations";
 import { computeStreakFromDates } from "@/lib/streak";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
-async function computeStreak(): Promise<number> {
+async function computeStreak(userId: string): Promise<number> {
   const rows = await prisma.meal.findMany({
+    where: { userId },
     distinct: ["date"],
     select: { date: true },
   });
@@ -17,7 +20,10 @@ async function computeStreak(): Promise<number> {
 }
 
 export default async function ProfilePage() {
-  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
   if (!profile) redirect("/setup");
 
   const input: ProfileInput = {
@@ -30,7 +36,7 @@ export default async function ProfilePage() {
   };
   const targets = computeTargets(input);
   const bmi = computeBMI(profile.weightKg, profile.heightCm);
-  const streak = await computeStreak();
+  const streak = await computeStreak(session.user.id);
 
   const GOAL_ROWS: { label: string; value: number; unit: string; cap: boolean; color: string; icon: LucideIcon }[] = [
     { label: "Calorias", value: targets.calories, unit: "kcal", cap: false, color: "var(--accent)", icon: Flame },
@@ -111,6 +117,7 @@ export default async function ProfilePage() {
           <Ruler size={16} strokeWidth={2} color="var(--dim)" />
           Unidades e preferências
         </div>
+        <LogoutButton />
       </div>
     </div>
   );

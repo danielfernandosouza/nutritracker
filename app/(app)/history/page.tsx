@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { toDateKey } from "@/lib/date";
 import { MealIcon } from "@/components/MealIcon";
@@ -19,7 +21,11 @@ function formatHistoryDate(dateKey: string, todayKey: string): string {
 }
 
 export default async function HistoryPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
   const meals = await prisma.meal.findMany({
+    where: { userId: session.user.id },
     orderBy: [{ date: "desc" }, { createdAt: "asc" }],
     take: 300,
   });

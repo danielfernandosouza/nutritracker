@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { auth } from "@/auth";
 import { anthropic, MODEL, MEAL_ESTIMATE_TOOL, WORKOUT_ESTIMATE_TOOL, buildSystemPrompt, buildWorkoutSystemPrompt } from "@/lib/anthropic";
 import { prisma } from "@/lib/db";
 import { computeTargets, type ProfileInput } from "@/lib/calculations";
+import { isPhotoTooLarge } from "@/lib/photo";
 import type { MealTotals } from "@/lib/targets";
 
 type ChatRequestBody = {
@@ -15,14 +17,20 @@ type ChatRequestBody = {
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const body = (await request.json()) as ChatRequestBody;
   const { message, image, dayTotals, mode = "meal" } = body;
 
   if (!message && !image) {
     return NextResponse.json({ error: "message or image is required" }, { status: 400 });
   }
+  if (image && isPhotoTooLarge(image.data)) {
+    return NextResponse.json({ error: "Foto muito grande. Tente uma imagem menor." }, { status: 413 });
+  }
 
-  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
   if (!profile) {
     return NextResponse.json({ error: "Perfil não configurado. Complete o cadastro primeiro." }, { status: 400 });
   }

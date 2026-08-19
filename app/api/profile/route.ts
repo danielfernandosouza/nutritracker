@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { computeTargets, computeBMI, type ProfileInput } from "@/lib/calculations";
 
 export async function GET() {
-  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
 
   if (!profile) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -26,6 +30,9 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const {
     name,
@@ -64,8 +71,8 @@ export async function PUT(request: NextRequest) {
   };
 
   const profile = await prisma.profile.upsert({
-    where: { id: "me" },
-    create: { id: "me", ...data },
+    where: { id: session.user.id },
+    create: { id: session.user.id, ...data },
     update: data,
   });
 

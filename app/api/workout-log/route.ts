@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { toDateKey } from "@/lib/date";
 import { computeStreakFromDates } from "@/lib/streak";
+import { isPhotoTooLarge } from "@/lib/photo";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const rows = await prisma.workoutLog.findMany({
+    where: { userId: session.user.id },
     distinct: ["date"],
     orderBy: { createdAt: "desc" },
   });
@@ -17,11 +23,17 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const { date, workoutName, durationMinutes, caloriesBurned, photo } = body;
 
   if (!date || !workoutName) {
     return NextResponse.json({ error: "date and workoutName are required" }, { status: 400 });
+  }
+  if (isPhotoTooLarge(photo)) {
+    return NextResponse.json({ error: "Foto muito grande. Tente uma imagem menor." }, { status: 413 });
   }
 
   const data = {
@@ -31,10 +43,10 @@ export async function POST(request: NextRequest) {
     photo: photo !== undefined ? photo || null : undefined,
   };
 
-  const existing = await prisma.workoutLog.findFirst({ where: { date } });
+  const existing = await prisma.workoutLog.findFirst({ where: { date, userId: session.user.id } });
   const log = existing
     ? await prisma.workoutLog.update({ where: { id: existing.id }, data })
-    : await prisma.workoutLog.create({ data: { date, ...data } });
+    : await prisma.workoutLog.create({ data: { date, userId: session.user.id, ...data } });
 
   return NextResponse.json({ log }, { status: existing ? 200 : 201 });
 }

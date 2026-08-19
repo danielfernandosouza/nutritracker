@@ -152,13 +152,15 @@ export function WorkoutScanFlow({
               >
                 <span className="block h-[60px] w-[60px] rounded-full bg-accent" />
               </button>
-              <button
-                onClick={loadMock}
-                className="flex items-center gap-1.5 rounded-full bg-black/50 px-3.5 py-1.5 text-[12px] font-semibold text-white"
-              >
-                <FlaskConical size={13} strokeWidth={2} />
-                Testar com exemplo (sem foto)
-              </button>
+              {process.env.NODE_ENV !== "production" && (
+                <button
+                  onClick={loadMock}
+                  className="flex items-center gap-1.5 rounded-full bg-black/50 px-3.5 py-1.5 text-[12px] font-semibold text-white"
+                >
+                  <FlaskConical size={13} strokeWidth={2} />
+                  Testar com exemplo (sem foto)
+                </button>
+              )}
             </div>
           </div>
         </div>

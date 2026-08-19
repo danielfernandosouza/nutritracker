@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { generateWorkoutPlan, type WorkoutPreferences } from "@/lib/workout-generator";
 import type { MuscleGroup } from "@/lib/exercises";
@@ -9,7 +10,10 @@ import { Dumbbell } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function WorkoutsPage() {
-  const profile = await prisma.profile.findUnique({ where: { id: "me" } });
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
   if (!profile) redirect("/setup");
 
   const prefs: WorkoutPreferences = {

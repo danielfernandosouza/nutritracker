@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { isPhotoTooLarge } from "@/lib/photo";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const date = request.nextUrl.searchParams.get("date");
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
@@ -11,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   const meals = await prisma.meal.findMany({
-    where: date ? { date } : { date: { gte: from!, lte: to! } },
+    where: { userId: session.user.id, ...(date ? { date } : { date: { gte: from!, lte: to! } }) },
     orderBy: { createdAt: "asc" },
   });
 
@@ -19,15 +24,22 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const { date, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo } = body;
 
   if (!date || !name) {
     return NextResponse.json({ error: "date and name are required" }, { status: 400 });
   }
+  if (isPhotoTooLarge(photo)) {
+    return NextResponse.json({ error: "Foto muito grande. Tente uma imagem menor." }, { status: 413 });
+  }
 
   const meal = await prisma.meal.create({
     data: {
+      userId: session.user.id,
       date,
       name,
       calories: Number(calories) || 0,
@@ -45,15 +57,21 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const { id, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo } = body;
 
   if (!id || !name) {
     return NextResponse.json({ error: "id and name are required" }, { status: 400 });
   }
+  if (isPhotoTooLarge(photo)) {
+    return NextResponse.json({ error: "Foto muito grande. Tente uma imagem menor." }, { status: 413 });
+  }
 
-  const meal = await prisma.meal.update({
-    where: { id },
+  const { count } = await prisma.meal.updateMany({
+    where: { id, userId: session.user.id },
     data: {
       name,
       calories: Number(calories) || 0,
@@ -67,16 +85,24 @@ export async function PUT(request: NextRequest) {
     },
   });
 
+  if (count === 0) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  const meal = await prisma.meal.findUnique({ where: { id } });
   return NextResponse.json({ meal });
 }
 
 export async function DELETE(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  await prisma.meal.delete({ where: { id } });
+  await prisma.meal.deleteMany({ where: { id, userId: session.user.id } });
 
   return NextResponse.json({ ok: true });
 }

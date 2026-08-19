@@ -24,13 +24,16 @@ export default function OnboardingPage() {
       </div>
       <div className="flex flex-col gap-3">
         <Link
-          href="/home"
+          href="/login"
           className="font-display mt-1.5 rounded-2xl bg-accent py-4 text-center text-base font-bold text-[#0B0B0C]"
         >
           Entrar
         </Link>
         <div className="text-center text-[13px] text-dim">
-          Não tem conta? <span className="font-semibold text-accent">Criar conta</span>
+          Não tem conta?{" "}
+          <Link href="/signup" className="font-semibold text-accent">
+            Criar conta
+          </Link>
         </div>
       </div>
     </div>

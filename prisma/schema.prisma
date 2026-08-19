@@ -12,8 +12,23 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  profile       Profile?
+  meals         Meal[]
+  weightEntries WeightEntry[]
+  workoutLogs   WorkoutLog[]
+}
+
 model Meal {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String
   name      String
   calories  Float
@@ -26,39 +41,44 @@ model Meal {
   photo     String?
   createdAt DateTime @default(now())
 
-  @@index([date])
+  @@index([userId, date])
 }
 
 model Profile {
-  id             String   @id @default("me")
-  name           String?
-  sex            String
-  age            Int
-  heightCm       Float
-  weightKg       Float
-  activityLevel  String
-  goal           String
-  exerciseNotes  String?
-  mealsPerDay    Int?
+  id                   String   @id
+  user                 User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  name                 String?
+  sex                  String
+  age                  Int
+  heightCm             Float
+  weightKg             Float
+  activityLevel        String
+  goal                 String
+  exerciseNotes        String?
+  mealsPerDay          Int?
   daysPerWeek          Int?
   splitStyle           String?
   equipmentPreference  String?
   favoriteMuscleGroups String[] @default([])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model WeightEntry {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String
   weightKg  Float
   createdAt DateTime @default(now())
 
-  @@index([date])
+  @@index([userId, date])
 }
 
 model WorkoutLog {
   id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date            String
   workoutName     String
   durationMinutes Float?
@@ -66,5 +86,5 @@ model WorkoutLog {
   photo           String?
   createdAt       DateTime @default(now())
 
-  @@index([date])
+  @@index([userId, date])
 }
