@@ -11,6 +11,7 @@ import { lastDateKeys } from "@/lib/date";
 import { LogoutButton } from "@/components/LogoutButton";
 import { BiometricSetupButton } from "@/components/BiometricSetupButton";
 import { ProfileGoalsGrid } from "@/components/ProfileGoalsGrid";
+import { WeightSection } from "@/components/WeightSection";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,14 @@ export default async function ProfilePage() {
   const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
   if (!profile) redirect("/setup");
 
+  const weightHistoryStart = lastDateKeys(90)[0];
+  const weightEntries = await prisma.weightEntry.findMany({
+    where: { userId: session.user.id, date: { gte: weightHistoryStart } },
+    orderBy: { date: "asc" },
+    select: { date: true, weightKg: true },
+  });
+  const latestWeightKg = weightEntries.length > 0 ? weightEntries[weightEntries.length - 1].weightKg : profile.weightKg;
+
   const input: ProfileInput = {
     sex: profile.sex as ProfileInput["sex"],
     age: profile.age,
@@ -39,7 +48,7 @@ export default async function ProfilePage() {
     goal: profile.goal as ProfileInput["goal"],
   };
   const targets = computeTargets(input);
-  const bmi = computeBMI(profile.weightKg, profile.heightCm);
+  const bmi = computeBMI(latestWeightKg, profile.heightCm);
   const streak = await computeStreak(session.user.id);
 
   const yesterday = lastDateKeys(2)[0];
@@ -64,7 +73,7 @@ export default async function ProfilePage() {
 
       <div className="mb-6 grid grid-cols-3 gap-2.5">
         <div className="rounded-2xl border border-line bg-panel p-3.5 text-center">
-          <div className="font-display text-[17px] font-bold">{profile.weightKg} kg</div>
+          <div className="font-display text-[17px] font-bold">{latestWeightKg} kg</div>
           <div className="mt-0.5 text-[11px] text-dim">peso atual</div>
         </div>
         <div className="rounded-2xl border border-line bg-panel p-3.5 text-center">
@@ -76,6 +85,8 @@ export default async function ProfilePage() {
           <div className="mt-0.5 text-[11px] text-dim">dias seguidos</div>
         </div>
       </div>
+
+      <WeightSection entries={weightEntries} currentWeightKg={latestWeightKg} />
 
       <ProfileGoalsGrid
         targets={targets}

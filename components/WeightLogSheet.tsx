@@ -44,7 +44,7 @@ export function WeightLogSheet({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scale size={16} strokeWidth={2} color="var(--accent)" />
-            <h3 className="font-display text-base font-bold">Registrar peso de hoje</h3>
+            <h3 className="font-display text-base font-bold">Registrar peso</h3>
           </div>
           <button onClick={onClose} aria-label="Fechar" className="flex h-8 w-8 items-center justify-center rounded-full bg-track text-dim">
             <X size={14} strokeWidth={2.2} />
@@ -63,6 +63,8 @@ export function WeightLogSheet({
           />
           <span className="text-sm text-dim">kg</span>
         </div>
+
+        <p className="mb-4 text-center text-[12px] text-dim">O ideal é pesar 1x por semana, no mesmo dia e horário.</p>
 
         <button
           onClick={handleSave}

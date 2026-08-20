@@ -121,6 +121,7 @@ model WorkoutLog {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date            String
   workoutName     String
+  planDayId       String?
   durationMinutes Float?
   caloriesBurned  Float?
   photo           String?

@@ -1,36 +1,50 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { toDateKey } from "@/lib/date";
-import { MealIcon } from "@/components/MealIcon";
+import { toDateKey, lastDateKeys } from "@/lib/date";
+import { computeTargets, type ProfileInput } from "@/lib/calculations";
+import { HistoryDayList } from "@/components/HistoryDayList";
 
 export const dynamic = "force-dynamic";
-
-function formatHistoryDate(dateKey: string, todayKey: string): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  if (dateKey === todayKey) return "Hoje";
-
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (dateKey === toDateKey(yesterday)) return "Ontem";
-
-  const days = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-  const months = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-  return `${days[date.getDay()]}, ${d} ${months[m - 1]}`;
-}
 
 export default async function HistoryPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const meals = await prisma.meal.findMany({
-    where: { userId: session.user.id },
-    orderBy: [{ date: "desc" }, { createdAt: "asc" }],
-    take: 300,
-  });
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
+  if (!profile) redirect("/setup");
+
+  const input: ProfileInput = {
+    sex: profile.sex as ProfileInput["sex"],
+    age: profile.age,
+    heightCm: profile.heightCm,
+    weightKg: profile.weightKg,
+    activityLevel: profile.activityLevel as ProfileInput["activityLevel"],
+    goal: profile.goal as ProfileInput["goal"],
+  };
+  const targets = computeTargets(input);
+
+  const historyStart = lastDateKeys(30)[0];
+
+  const [meals, workoutLogs, weightEntries] = await Promise.all([
+    prisma.meal.findMany({
+      where: { userId: session.user.id },
+      orderBy: [{ date: "desc" }, { createdAt: "asc" }],
+      take: 300,
+    }),
+    prisma.workoutLog.findMany({
+      where: { userId: session.user.id, date: { gte: historyStart } },
+      select: { date: true },
+    }),
+    prisma.weightEntry.findMany({
+      where: { userId: session.user.id, date: { gte: historyStart } },
+      select: { date: true, weightKg: true },
+    }),
+  ]);
 
   const todayKey = toDateKey(new Date());
+  const workoutDates = new Set(workoutLogs.map((w) => w.date));
+  const weightByDate = new Map(weightEntries.map((w) => [w.date, w.weightKg]));
 
   const byDate = new Map<string, typeof meals>();
   for (const meal of meals) {
@@ -39,34 +53,24 @@ export default async function HistoryPage() {
     byDate.set(meal.date, list);
   }
 
-  const days = Array.from(byDate.entries()).slice(0, 30);
+  const days = Array.from(byDate.entries())
+    .slice(0, 30)
+    .map(([dateKey, dayMeals]) => ({
+      dateKey,
+      meals: dayMeals.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })),
+      hasWorkout: workoutDates.has(dateKey),
+      weightKg: weightByDate.get(dateKey) ?? null,
+    }));
 
   return (
     <div className="px-5 pb-6 pt-6">
       <div className="font-display mb-5 text-[22px] font-bold">Histórico</div>
 
-      {days.length === 0 && <p className="text-sm text-dim">Nenhuma refeição registrada ainda.</p>}
-
-      {days.map(([dateKey, dayMeals]) => {
-        const totalKcal = dayMeals.reduce((acc, m) => acc + m.calories, 0);
-        return (
-          <div key={dateKey} className="mb-6">
-            <div className="mb-2.5 flex items-baseline justify-between">
-              <div className="text-[15px] font-bold">{formatHistoryDate(dateKey, todayKey)}</div>
-              <div className="num text-[13px] text-dim">{Math.round(totalKcal)} kcal</div>
-            </div>
-            <div className="flex flex-col gap-2">
-              {dayMeals.map((meal) => (
-                <div key={meal.id} className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-3.5 py-2.5">
-                  <MealIcon photo={meal.photo} emoji={meal.emoji} size={34} rounded="rounded-lg" />
-                  <div className="min-w-0 flex-1 truncate text-[13px] font-medium">{meal.name}</div>
-                  <div className="num min-w-[44px] text-right text-[13px] font-bold">{Math.round(meal.calories)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+      {days.length === 0 ? (
+        <p className="text-sm text-dim">Nenhuma refeição registrada ainda.</p>
+      ) : (
+        <HistoryDayList days={days} targets={targets} todayKey={todayKey} />
+      )}
     </div>
   );
 }

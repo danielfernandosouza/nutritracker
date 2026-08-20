@@ -95,7 +95,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       await fetch("/api/workout-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: toDateKey(new Date()), workoutName: name }),
+        body: JSON.stringify({ date: toDateKey(new Date()), workoutName: name, planDayId: workout.id }),
       });
       await refreshWorkoutLog();
     } finally {
