@@ -3,13 +3,13 @@
 import { Moon, ChevronRight } from "lucide-react";
 import type { SleepFeedback } from "@/lib/wellness";
 
-export function SleepCard({ feedback, onOpenLog }: { feedback: SleepFeedback | null; onOpenLog: () => void }) {
+export function SleepCard({ feedback, onOpenInfo }: { feedback: SleepFeedback | null; onOpenInfo: () => void }) {
   const color =
     feedback?.quality === "good" ? "var(--accent)" : feedback?.quality === "short" ? "var(--sodium)" : "var(--sugar)";
 
   return (
     <button
-      onClick={onOpenLog}
+      onClick={onOpenInfo}
       className="mb-6 flex w-full items-center gap-3.5 rounded-3xl border border-line bg-panel p-5 text-left"
     >
       <div
@@ -32,7 +32,7 @@ export function SleepCard({ feedback, onOpenLog }: { feedback: SleepFeedback | n
         ) : (
           <>
             <div className="font-display text-[15px] font-bold">Sono</div>
-            <p className="mt-0.5 text-[12px] text-dim">Toque pra registrar a que horas você dormiu e acordou.</p>
+            <p className="mt-0.5 text-[12px] text-dim">Toque pra entender sua meta de sono e registrar.</p>
           </>
         )}
       </div>

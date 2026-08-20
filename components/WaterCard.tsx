@@ -8,15 +8,17 @@ export function WaterCard({
   totalMl,
   targetMl,
   onAdd,
+  onOpenInfo,
 }: {
   totalMl: number;
   targetMl: number;
   onAdd: (amountMl: number) => void;
+  onOpenInfo: () => void;
 }) {
   const pct = Math.min((totalMl / targetMl) * 100, 100);
 
   return (
-    <div className="mb-6 rounded-3xl border border-line bg-panel p-5">
+    <button onClick={onOpenInfo} className="mb-6 w-full rounded-3xl border border-line bg-panel p-5 text-left">
       <div className="flex items-center gap-3.5">
         <div
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
@@ -35,16 +37,20 @@ export function WaterCard({
         </div>
         <div className="flex shrink-0 gap-1.5">
           {QUICK_ADD_ML.map((ml) => (
-            <button
+            <span
               key={ml}
-              onClick={() => onAdd(ml)}
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd(ml);
+              }}
               className="rounded-full bg-track px-3 py-2 text-[12px] font-bold text-accent"
             >
               +{ml}ml
-            </button>
+            </span>
           ))}
         </div>
       </div>
-    </div>
+    </button>
   );
 }

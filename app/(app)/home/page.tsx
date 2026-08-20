@@ -14,12 +14,14 @@ import { WorkoutStreakCard } from "@/components/WorkoutStreakCard";
 import { WaterCard } from "@/components/WaterCard";
 import { SleepCard } from "@/components/SleepCard";
 import { SleepLogSheet } from "@/components/SleepLogSheet";
+import { MetricInfoSheet } from "@/components/MetricInfoSheet";
 import { ChatPanel } from "@/components/ChatPanel";
 import { SplashScreen } from "@/components/SplashScreen";
 import { toDateKey, formatDateLabel, lastDateKeys } from "@/lib/date";
 import { EMPTY_TOTALS, type MealTotals } from "@/lib/targets";
 import { computeWeeklySummary } from "@/lib/weekly-summary";
 import { computeSleepFeedback, type SleepFeedback } from "@/lib/wellness";
+import type { MetricKey } from "@/lib/metric-info";
 import type { Goal } from "@/lib/calculations";
 import type { Meal, MealInput } from "@/lib/types";
 
@@ -47,6 +49,7 @@ export default function HomePage() {
   const [sleepFeedback, setSleepFeedback] = useState<SleepFeedback | null>(null);
   const [sleepEntry, setSleepEntry] = useState<{ bedTime: string; wakeTime: string } | null>(null);
   const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
+  const [openMetric, setOpenMetric] = useState<MetricKey | null>(null);
 
   const today = new Date();
   const dateKey = toDateKey(today);
@@ -253,7 +256,10 @@ export default function HomePage() {
         </div>
       ) : (
         <>
-          <div className="mb-4 flex items-center gap-5 rounded-3xl border border-line bg-panel p-6">
+          <button
+            onClick={() => setOpenMetric("calories")}
+            className="mb-4 flex w-full items-center gap-5 rounded-3xl border border-line bg-panel p-6 text-left"
+          >
             <Ring value={totals.calories} target={targets.calories} color="var(--accent)" />
             <div>
               <div className="flex items-baseline gap-1">
@@ -263,15 +269,15 @@ export default function HomePage() {
               <div className="mt-1 text-[13px] text-dim">de {targets.calories} kcal</div>
               <div className="mt-2.5 text-[13px] font-semibold text-accent">{Math.round(kcalRemaining)} kcal restantes</div>
             </div>
-          </div>
+          </button>
 
           <WorkoutStreakCard streak={workoutStreak} loggedToday={workoutLoggedToday} today={workoutToday} />
 
-          <WaterCard totalMl={waterTotalMl} targetMl={waterTargetMl} onAdd={handleAddWater} />
-          <SleepCard feedback={sleepFeedback} onOpenLog={() => setSleepSheetOpen(true)} />
+          <WaterCard totalMl={waterTotalMl} targetMl={waterTargetMl} onAdd={handleAddWater} onOpenInfo={() => setOpenMetric("water")} />
+          <SleepCard feedback={sleepFeedback} onOpenInfo={() => setOpenMetric("sleep")} />
 
           <div className="mb-6">
-            <MacroRows totals={totals} targets={targets} />
+            <MacroRows totals={totals} targets={targets} onSelect={setOpenMetric} />
           </div>
 
           {summary && (
@@ -314,6 +320,48 @@ export default function HomePage() {
         onSave={handleSaveSleep}
       />
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} dayTotals={totals} />
+      {targets && (
+        <MetricInfoSheet
+          metric={openMetric}
+          onClose={() => setOpenMetric(null)}
+          today={
+            openMetric && openMetric !== "sleep" && openMetric !== "water"
+              ? { value: totals[openMetric], target: targets[openMetric] }
+              : openMetric === "water"
+                ? { value: waterTotalMl, target: waterTargetMl }
+                : undefined
+          }
+          sleepFeedback={openMetric === "sleep" ? sleepFeedback : undefined}
+          footerAction={
+            openMetric === "water" ? (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => handleAddWater(250)}
+                  className="flex-1 rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C]"
+                >
+                  +250ml
+                </button>
+                <button
+                  onClick={() => handleAddWater(500)}
+                  className="flex-1 rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C]"
+                >
+                  +500ml
+                </button>
+              </div>
+            ) : openMetric === "sleep" ? (
+              <button
+                onClick={() => {
+                  setOpenMetric(null);
+                  setSleepSheetOpen(true);
+                }}
+                className="w-full rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C]"
+              >
+                Registrar sono
+              </button>
+            ) : undefined
+          }
+        />
+      )}
       {selectedDay && targets && (
         <DaySummaryModal
           date={selectedDay}
