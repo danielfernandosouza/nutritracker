@@ -37,11 +37,11 @@ export default async function ProfilePage() {
     orderBy: { date: "asc" },
     select: { date: true, weightKg: true },
   });
+  // Always prepend the onboarding weight as the chart's starting point — even when a real entry
+  // was logged the same calendar day. Collapsing them into one point would hide the very trend
+  // the chart exists to show right after someone's first edit (cadastro weight vs. just-logged one).
   const signupDateKey = toDateKey(profile.createdAt);
-  const hasSignupDayEntry = loggedWeightEntries.some((e) => e.date === signupDateKey);
-  const weightEntries = hasSignupDayEntry
-    ? loggedWeightEntries
-    : [{ date: signupDateKey, weightKg: profile.weightKg }, ...loggedWeightEntries];
+  const weightEntries = [{ date: signupDateKey, weightKg: profile.weightKg }, ...loggedWeightEntries];
   const latestWeightKg =
     loggedWeightEntries.length > 0 ? loggedWeightEntries[loggedWeightEntries.length - 1].weightKg : profile.weightKg;
 
