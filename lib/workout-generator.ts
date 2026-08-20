@@ -21,6 +21,8 @@ export type WorkoutPreferences = {
    * exatamente os mesmos exercícios — o que é o comportamento que estamos corrigindo aqui.
    */
   seed: string;
+  /** Dias da semana (0-6, domingo-sábado) marcados manualmente como descanso, nunca recebem treino. */
+  restWeekdays: number[];
 };
 
 export const SPLIT_STYLE_LABELS: Record<SplitStyle, { label: string; description: string }> = {
@@ -38,14 +40,32 @@ export const EQUIPMENT_PREFERENCE_LABELS: Record<EquipmentPreference, { label: s
 
 type DayTemplate = { label: string; color: string; groups: MuscleGroup[] };
 
+/**
+ * Superior/Inferior combinado — usado em baixa frequência (≤3x/semana), onde não dá pra fracionar
+ * mais sem deixar um grupo muscular sem treinar nenhuma vez na semana.
+ */
+const UPPER_LOWER_COMBINED: DayTemplate[] = [
+  { label: "Superior", color: "var(--protein)", groups: ["chest", "back", "shoulders", "biceps", "triceps"] },
+  { label: "Inferior", color: "var(--carb)", groups: ["quads", "hamstrings", "glutes", "calves", "abs"] },
+];
+
+/**
+ * Superior/Inferior fracionado por padrão push/pull (empurrar/puxar) e quadríceps/posterior —
+ * o clássico split de 4 dias/semana (Renaissance Periodization, Jeff Nippard, etc): em vez de
+ * repetir "Superior" batendo nos mesmos grupos duas vezes, cada sessão tem uma ênfase distinta.
+ */
+const UPPER_LOWER_SPLIT: DayTemplate[] = [
+  { label: "Superior — Empurrar", color: "var(--protein)", groups: ["chest", "shoulders", "triceps"] },
+  { label: "Inferior — Quadríceps", color: "var(--carb)", groups: ["quads", "glutes", "calves", "abs"] },
+  { label: "Superior — Puxar", color: "var(--fat)", groups: ["back", "biceps"] },
+  { label: "Inferior — Posterior", color: "var(--sugar)", groups: ["hamstrings", "glutes", "calves", "abs"] },
+];
+
 const DAY_TEMPLATES: Record<SplitStyle, DayTemplate[]> = {
   full_body: [
     { label: "Full Body", color: "var(--accent)", groups: ["chest", "back", "shoulders", "quads", "hamstrings", "abs"] },
   ],
-  upper_lower: [
-    { label: "Superior", color: "var(--protein)", groups: ["chest", "back", "shoulders", "biceps", "triceps"] },
-    { label: "Inferior", color: "var(--carb)", groups: ["quads", "hamstrings", "glutes", "calves", "abs"] },
-  ],
+  upper_lower: UPPER_LOWER_COMBINED,
   push_pull_legs: [
     { label: "Empurrar", color: "var(--protein)", groups: ["chest", "shoulders", "triceps"] },
     { label: "Puxar", color: "var(--fat)", groups: ["back", "biceps"] },
@@ -59,6 +79,11 @@ const DAY_TEMPLATES: Record<SplitStyle, DayTemplate[]> = {
     { label: "Braço", color: "var(--carb)", groups: ["biceps", "triceps"] },
   ],
 };
+
+function resolveDayTemplates(splitStyle: SplitStyle, daysPerWeek: number): DayTemplate[] {
+  if (splitStyle === "upper_lower" && daysPerWeek >= 4) return UPPER_LOWER_SPLIT;
+  return DAY_TEMPLATES[splitStyle];
+}
 
 function filterByEquipment(list: ExerciseDef[], pref: EquipmentPreference): ExerciseDef[] {
   const allow: Record<EquipmentPreference, Equipment[]> = {
@@ -134,6 +159,32 @@ const WEEKDAY_SPREAD: Record<number, number[]> = {
   7: [0, 1, 2, 3, 4, 5, 6],
 };
 
+/** Segunda→domingo, usado como ordem de preenchimento quando dias de descanso manuais forçam desvios da tabela acima. */
+const WEEK_ORDER_MON_FIRST = [1, 2, 3, 4, 5, 6, 0];
+
+/**
+ * Distribui `daysPerWeek` dias de treino pela semana, respeitando dias marcados manualmente como
+ * descanso (`restWeekdays`). Parte da distribuição padrão (que já reflete convenções reais de
+ * treino) e, se algum dia preferido cair num dia de descanso, troca pelo próximo dia disponível.
+ * Se sobrarem menos dias do que `daysPerWeek` pede, o plano fica com menos sessões do que o
+ * configurado — não dá pra treinar mais dias do que os disponíveis na semana.
+ */
+function assignWeekdays(daysPerWeek: number, restWeekdays: number[]): number[] {
+  const excluded = new Set(restWeekdays);
+  const available = WEEK_ORDER_MON_FIRST.filter((d) => !excluded.has(d));
+  const n = Math.min(daysPerWeek, available.length);
+  if (n <= 0) return [];
+
+  const preferred = WEEKDAY_SPREAD[daysPerWeek] ?? WEEKDAY_SPREAD[4];
+  const chosen = preferred.filter((d) => available.includes(d)).slice(0, n);
+  for (const d of available) {
+    if (chosen.length >= n) break;
+    if (!chosen.includes(d)) chosen.push(d);
+  }
+
+  return chosen.sort((a, b) => WEEK_ORDER_MON_FIRST.indexOf(a) - WEEK_ORDER_MON_FIRST.indexOf(b));
+}
+
 /** Hard ceiling per session — even with every group favorited, a workout must stay practical (ACSM: ~4-6, up to ~8 for extra emphasis). */
 const MAX_EXERCISES_PER_DAY = 8;
 
@@ -152,13 +203,14 @@ function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, oc
 }
 
 export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
-  const templates = DAY_TEMPLATES[prefs.splitStyle];
+  const weekdaySpread = assignWeekdays(prefs.daysPerWeek, prefs.restWeekdays);
+  const effectiveDays = weekdaySpread.length;
+  const templates = resolveDayTemplates(prefs.splitStyle, effectiveDays);
   const labelCounts: Record<string, number> = {};
   const workouts: Workout[] = [];
   const seedNum = hashSeed(prefs.seed);
-  const weekdaySpread = WEEKDAY_SPREAD[prefs.daysPerWeek] ?? WEEKDAY_SPREAD[4];
 
-  for (let i = 0; i < prefs.daysPerWeek; i++) {
+  for (let i = 0; i < effectiveDays; i++) {
     const template = templates[i % templates.length];
     const occurrence = Math.floor(i / templates.length);
     labelCounts[template.label] = (labelCounts[template.label] ?? 0) + 1;

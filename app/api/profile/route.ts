@@ -62,6 +62,7 @@ export async function PUT(request: NextRequest) {
     splitStyle,
     equipmentPreference,
     favoriteMuscleGroups,
+    restWeekdays,
   } = body;
 
   if (!sex || !age || !heightCm || !weightKg || !activityLevel || !goal) {
@@ -82,6 +83,12 @@ export async function PUT(request: NextRequest) {
     splitStyle: splitStyle || null,
     equipmentPreference: equipmentPreference || null,
     favoriteMuscleGroups: Array.isArray(favoriteMuscleGroups) ? favoriteMuscleGroups : [],
+    // Omitted (not an array) leaves the existing value alone on update, and falls back to the
+    // schema default ([]) on create — unlike favoriteMuscleGroups above, edits made from the
+    // onboarding wizard (which doesn't know about rest days) shouldn't silently wipe them out.
+    ...(Array.isArray(restWeekdays)
+      ? { restWeekdays: restWeekdays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) }
+      : {}),
   };
 
   const profile = await prisma.profile.upsert({

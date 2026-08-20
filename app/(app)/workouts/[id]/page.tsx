@@ -24,6 +24,7 @@ export default async function WorkoutDetailPage(props: PageProps<"/workouts/[id]
     goal: profile.goal as WorkoutPreferences["goal"],
     age: profile.age,
     seed: session.user.id,
+    restWeekdays: profile.restWeekdays ?? [],
   };
   const workout = generateWorkoutPlan(prefs).find((w) => w.id === id);
 

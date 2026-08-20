@@ -7,6 +7,7 @@ import type { MuscleGroup } from "@/lib/exercises";
 import { MUSCLE_GROUP_ICONS, dominantMuscleGroup } from "@/lib/muscle-icons";
 import { ChevronLeft, ChevronRight, Dumbbell, Check, Moon } from "lucide-react";
 import { weekDateKeys, formatWeekdayShort, toDateKey } from "@/lib/date";
+import { WorkoutSettingsSheet } from "@/components/WorkoutSettingsSheet";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
     goal: profile.goal as WorkoutPreferences["goal"],
     age: profile.age,
     seed: session.user.id,
+    restWeekdays: profile.restWeekdays ?? [],
   };
   const workouts = generateWorkoutPlan(prefs);
   const workoutByWeekday = new Map(workouts.map((w) => [w.weekday, w]));
@@ -50,12 +52,38 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
     where: { userId: session.user.id, date: { in: weekKeys } },
     select: { date: true, planDayId: true },
   });
-  const doneByDate = new Map(weekLogs.map((l) => [l.date, l.planDayId]));
+  // A workout is "done this week" if it was logged on ANY day within the week, not necessarily
+  // the exact calendar date its weekday would suggest — users often log a workout on a different
+  // day than it was nominally scheduled for (e.g. catching up late), and the card should still
+  // show as completed for the week either way.
+  const weekPlanDayIds = new Set(weekLogs.map((l) => l.planDayId).filter((id): id is string => !!id));
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <div className="font-display text-[22px] font-bold">Treinos</div>
-      <div className="mb-5 text-[13px] text-dim">Seu plano, montado a partir das suas respostas</div>
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <div className="font-display text-[22px] font-bold">Treinos</div>
+          <div className="text-[13px] text-dim">Seu plano, montado a partir das suas respostas</div>
+        </div>
+        <WorkoutSettingsSheet
+          profile={{
+            name: profile.name,
+            sex: profile.sex,
+            age: profile.age,
+            heightCm: profile.heightCm,
+            weightKg: profile.weightKg,
+            activityLevel: profile.activityLevel,
+            goal: profile.goal,
+            exerciseNotes: profile.exerciseNotes,
+            mealsPerDay: profile.mealsPerDay,
+            daysPerWeek: profile.daysPerWeek,
+            splitStyle: profile.splitStyle,
+            equipmentPreference: profile.equipmentPreference,
+            favoriteMuscleGroups: profile.favoriteMuscleGroups,
+            restWeekdays: profile.restWeekdays,
+          }}
+        />
+      </div>
 
       <div className="mb-6 flex items-center justify-between">
         <Link
@@ -110,7 +138,7 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
 
           const group = dominantMuscleGroup(workout.exercises.map((e) => e.muscleGroup));
           const Icon = group ? MUSCLE_GROUP_ICONS[group] : Dumbbell;
-          const done = doneByDate.get(dateKey) === workout.id;
+          const done = weekPlanDayIds.has(workout.id);
 
           return (
             <Link
