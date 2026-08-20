@@ -57,6 +57,9 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
   // day than it was nominally scheduled for (e.g. catching up late), and the card should still
   // show as completed for the week either way.
   const weekPlanDayIds = new Set(weekLogs.map((l) => l.planDayId).filter((id): id is string => !!id));
+  // Logging via the watch-photo scan doesn't carry a planDayId (it's "did something", not tied to
+  // a specific plan day) — fall back to the exact date so those still show as done on their card.
+  const weekLoggedDates = new Set(weekLogs.map((l) => l.date));
 
   return (
     <div className="px-5 pb-6 pt-6">
@@ -138,7 +141,7 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
 
           const group = dominantMuscleGroup(workout.exercises.map((e) => e.muscleGroup));
           const Icon = group ? MUSCLE_GROUP_ICONS[group] : Dumbbell;
-          const done = weekPlanDayIds.has(workout.id);
+          const done = weekPlanDayIds.has(workout.id) || weekLoggedDates.has(dateKey);
 
           return (
             <Link

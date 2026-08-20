@@ -100,7 +100,10 @@ export default function HomePage() {
       setTargets(profileJson.targets);
       setProfileName(profileJson.profile.name ?? null);
       setGoal(profileJson.profile.goal ?? null);
-      setCurrentWeightKg(profileJson.profile.weightKg ?? null);
+      const weightEntriesJson: { date: string; weightKg: number }[] = weightJson.entries ?? [];
+      const latestLoggedWeightKg =
+        weightEntriesJson.length > 0 ? weightEntriesJson[weightEntriesJson.length - 1].weightKg : null;
+      setCurrentWeightKg(latestLoggedWeightKg ?? profileJson.profile.weightKg ?? null);
       setWeekMeals(weekJson.meals ?? []);
       setMeals((weekJson.meals ?? []).filter((m: Meal) => m.date === dateKey));
       setWeightEntries((weightJson.entries ?? []).map((e: { date: string; weightKg: number }) => ({ date: e.date, weightKg: e.weightKg })));
