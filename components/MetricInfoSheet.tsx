@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { X, TrendingDown, TrendingUp, CheckCircle2, ExternalLink } from "lucide-react";
 import { METRIC_INFO, computeMetricStatus, type MetricKey } from "@/lib/metric-info";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import type { SleepFeedback } from "@/lib/wellness";
 
 export function MetricInfoSheet({
@@ -18,6 +19,7 @@ export function MetricInfoSheet({
   sleepFeedback?: SleepFeedback | null;
   footerAction?: ReactNode;
 }) {
+  useLockBodyScroll(!!metric);
   if (!metric) return null;
   const info = METRIC_INFO[metric];
 

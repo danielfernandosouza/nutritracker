@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import type { MealTotals } from "@/lib/targets";
 
 type ChatMessage = {
@@ -21,6 +22,7 @@ export function ChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  useLockBodyScroll(open);
 
   if (!open) return null;
 

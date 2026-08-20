@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { computeTargets, computeBMI, GOAL_LABELS, type ProfileInput } from "@/lib/calculations";
 import { computeWaterTargetMl, computeSleepTargetHours } from "@/lib/wellness";
 import { computeStreakFromDates } from "@/lib/streak";
-import { lastDateKeys } from "@/lib/date";
+import { lastDateKeys, toDateKey } from "@/lib/date";
 import { LogoutButton } from "@/components/LogoutButton";
 import { BiometricSetupButton } from "@/components/BiometricSetupButton";
 import { ProfileGoalsGrid } from "@/components/ProfileGoalsGrid";
@@ -32,12 +32,18 @@ export default async function ProfilePage() {
   if (!profile) redirect("/setup");
 
   const weightHistoryStart = lastDateKeys(90)[0];
-  const weightEntries = await prisma.weightEntry.findMany({
+  const loggedWeightEntries = await prisma.weightEntry.findMany({
     where: { userId: session.user.id, date: { gte: weightHistoryStart } },
     orderBy: { date: "asc" },
     select: { date: true, weightKg: true },
   });
-  const latestWeightKg = weightEntries.length > 0 ? weightEntries[weightEntries.length - 1].weightKg : profile.weightKg;
+  const signupDateKey = toDateKey(profile.createdAt);
+  const hasSignupDayEntry = loggedWeightEntries.some((e) => e.date === signupDateKey);
+  const weightEntries = hasSignupDayEntry
+    ? loggedWeightEntries
+    : [{ date: signupDateKey, weightKg: profile.weightKg }, ...loggedWeightEntries];
+  const latestWeightKg =
+    loggedWeightEntries.length > 0 ? loggedWeightEntries[loggedWeightEntries.length - 1].weightKg : profile.weightKg;
 
   const input: ProfileInput = {
     sex: profile.sex as ProfileInput["sex"],
@@ -111,7 +117,7 @@ export default async function ProfilePage() {
           <Ruler size={16} strokeWidth={2} color="var(--dim)" />
           Unidades e preferências
         </div>
-        {session.user.email && <BiometricSetupButton email={session.user.email} />}
+        {session.user.email && <BiometricSetupButton email={session.user.email} name={session.user.name} />}
         <LogoutButton />
       </div>
     </div>

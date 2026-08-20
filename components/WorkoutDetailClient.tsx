@@ -13,6 +13,7 @@ import { RestSettingsSheet } from "@/components/RestSettingsSheet";
 import { EXERCISE_LIBRARY, MUSCLE_GROUP_LABELS, suggestWorkoutName, type ExerciseDef, type MuscleGroup } from "@/lib/exercises";
 import { toDateKey } from "@/lib/date";
 import { parseRestSeconds, formatRestSeconds } from "@/lib/rest-timer";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 
 type StoredOverride = {
   name: string;
@@ -50,6 +51,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
   const [restOverrideSeconds, setRestOverrideSeconds] = useState<number | null>(null);
   const [restSettingsOpen, setRestSettingsOpen] = useState(false);
   const [activeRest, setActiveRest] = useState<{ seconds: number; exerciseName: string } | null>(null);
+  useLockBodyScroll(removeIndex !== null);
 
   async function refreshWorkoutLog() {
     try {
@@ -191,8 +193,16 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
           <ChevronLeft size={17} strokeWidth={2.2} />
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: workout.color }}>
-            {workout.category}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: workout.color }}>
+              {workout.category}
+            </span>
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+              style={{ background: "color-mix(in srgb, " + workout.color + " 18%, var(--panel))", color: workout.color }}
+            >
+              {workout.splitLabel}
+            </span>
           </div>
           {editingName ? (
             <input

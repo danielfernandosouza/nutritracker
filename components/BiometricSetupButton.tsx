@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Fingerprint, Check } from "lucide-react";
 import { startRegistration, browserSupportsWebAuthn } from "@simplewebauthn/browser";
-import { BIOMETRIC_EMAIL_KEY } from "@/lib/biometric-storage";
+import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_NAME_KEY } from "@/lib/biometric-storage";
 
-export function BiometricSetupButton({ email }: { email: string }) {
+export function BiometricSetupButton({ email, name }: { email: string; name?: string | null }) {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,6 +40,7 @@ export function BiometricSetupButton({ email }: { email: string }) {
       if (!verifyRes.ok) throw new Error();
 
       localStorage.setItem(BIOMETRIC_EMAIL_KEY, email);
+      if (name) localStorage.setItem(BIOMETRIC_NAME_KEY, name.split(" ")[0]);
       setEnabled(true);
     } catch {
       setError("Não consegui ativar a biometria nesse dispositivo. Tente novamente.");

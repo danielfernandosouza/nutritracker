@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, Sparkles, FlaskConical, ImageIcon, Plus, Check } from "lucide-react";
 import { toDateKey } from "@/lib/date";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { EMPTY_TOTALS } from "@/lib/targets";
 import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
 import { useCameraStream, type CameraShot } from "@/lib/useCameraStream";
@@ -68,6 +69,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
+  useLockBodyScroll(open);
 
   if (!open) return null;
 

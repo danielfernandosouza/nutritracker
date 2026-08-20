@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Scale } from "lucide-react";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 
 export function WeightLogSheet({
   open,
@@ -16,6 +17,7 @@ export function WeightLogSheet({
 }) {
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
+  useLockBodyScroll(open);
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {

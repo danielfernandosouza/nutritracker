@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Moon } from "lucide-react";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 
 export function SleepLogSheet({
   open,
@@ -19,6 +20,7 @@ export function SleepLogSheet({
   const [bedTime, setBedTime] = useState("");
   const [wakeTime, setWakeTime] = useState("");
   const [saving, setSaving] = useState(false);
+  useLockBodyScroll(open);
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {

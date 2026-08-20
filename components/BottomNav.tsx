@@ -27,9 +27,12 @@ export function BottomNav({ onOpenCamera }: { onOpenCamera: () => void }) {
         href={item.href}
         aria-label={item.label}
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors"
-        style={{ background: active ? "var(--accent)" : "transparent" }}
+        style={{
+          background: "transparent",
+          border: active ? "2px solid var(--accent)" : "2px solid transparent",
+        }}
       >
-        <Icon size={20} strokeWidth={2} color={active ? "#0B0B0C" : "var(--dim)"} />
+        <Icon size={20} strokeWidth={2} color={active ? "var(--accent)" : "var(--dim)"} />
       </Link>
     );
   }

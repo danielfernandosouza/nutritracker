@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -90,23 +91,17 @@ export default function SignupPage() {
             placeholder="E-mail"
             className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
           />
-          <input
-            type="password"
-            required
-            autoComplete="new-password"
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Senha (mín. 8 caracteres)"
-            className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
-          />
-          <input
-            type="password"
-            required
+            onChange={setPassword}
             autoComplete="new-password"
+            placeholder="Senha (mín. 8 caracteres)"
+          />
+          <PasswordInput
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={setConfirmPassword}
+            autoComplete="new-password"
             placeholder="Confirmar senha"
-            className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
           />
           <input
             type="text"

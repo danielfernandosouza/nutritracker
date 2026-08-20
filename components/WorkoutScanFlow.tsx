@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, FlaskConical, Watch, ImageIcon } from "lucide-react";
 import { toDateKey } from "@/lib/date";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { useCameraStream } from "@/lib/useCameraStream";
 
 type Stage = "idle" | "scanning" | "result" | "error";
@@ -52,6 +53,7 @@ export function WorkoutScanFlow({
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
+  useLockBodyScroll(open);
 
   if (!open) return null;
 

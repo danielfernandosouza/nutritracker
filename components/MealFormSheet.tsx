@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
+import { VoiceMealButton } from "@/components/VoiceMealButton";
 import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
 
 function Field({
@@ -53,6 +55,7 @@ export function MealFormSheet({
     sugar: "",
   });
   const [photo, setPhoto] = useState<string | null>(null);
+  useLockBodyScroll(open);
 
   // Reset the form fields whenever the sheet transitions from closed to open,
   // following React's "adjust state during render" pattern instead of an effect.
@@ -81,6 +84,19 @@ export function MealFormSheet({
     setForm((f) => ({ ...f, [key]: v }));
   }
 
+  function applyVoiceResult(data: Partial<MealInput>) {
+    setForm((f) => ({
+      name: data.name ?? f.name,
+      emoji: data.emoji ?? f.emoji,
+      calories: data.calories !== undefined ? String(data.calories) : f.calories,
+      protein: data.protein !== undefined ? String(data.protein) : f.protein,
+      carbs: data.carbs !== undefined ? String(data.carbs) : f.carbs,
+      fat: data.fat !== undefined ? String(data.fat) : f.fat,
+      sodium: data.sodium !== undefined ? String(data.sodium) : f.sodium,
+      sugar: data.sugar !== undefined ? String(data.sugar) : f.sugar,
+    }));
+  }
+
   function handleSave() {
     if (!form.name || !form.calories) return;
     onSave({
@@ -105,6 +121,7 @@ export function MealFormSheet({
     >
       <div className="max-h-[85vh] w-full max-w-[420px] overflow-y-auto rounded-t-2xl border-t border-line bg-panel p-5">
         <h3 className="font-display mb-3.5 text-base font-bold">{initial ? "Editar refeição" : "Adicionar refeição"}</h3>
+        {!initial && <VoiceMealButton onResult={applyVoiceResult} />}
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt="Foto da refeição" className="mb-3.5 h-40 w-full rounded-2xl object-cover" />

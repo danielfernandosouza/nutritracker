@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Timer } from "lucide-react";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { REST_PRESETS } from "@/lib/rest-timer";
 
 export function RestSettingsSheet({
@@ -18,6 +19,7 @@ export function RestSettingsSheet({
   onReset: () => void;
 }) {
   const [custom, setCustom] = useState(current ? String(current) : "");
+  useLockBodyScroll(open);
 
   if (!open) return null;
 

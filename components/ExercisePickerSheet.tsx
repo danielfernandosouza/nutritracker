@@ -8,6 +8,7 @@ import {
   type MuscleGroup,
 } from "@/lib/exercises";
 import { MUSCLE_GROUP_ICONS } from "@/lib/muscle-icons";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 
 const GROUPS = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[];
@@ -30,6 +31,7 @@ export function ExercisePickerSheet({
   excludeIds?: string[];
 }) {
   const [activeGroup, setActiveGroup] = useState<MuscleGroup>(initialGroup);
+  useLockBodyScroll(open);
 
   if (!open) return null;
 

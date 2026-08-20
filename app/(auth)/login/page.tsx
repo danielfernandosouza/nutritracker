@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Fingerprint } from "lucide-react";
 import { startAuthentication, browserSupportsWebAuthn } from "@simplewebauthn/browser";
-import { BIOMETRIC_EMAIL_KEY } from "@/lib/biometric-storage";
+import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_NAME_KEY } from "@/lib/biometric-storage";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,13 +17,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [biometricEmail, setBiometricEmail] = useState<string | null>(null);
+  const [biometricName, setBiometricName] = useState<string | null>(null);
   const [biometricBusy, setBiometricBusy] = useState(false);
+  const [greetingDismissed, setGreetingDismissed] = useState(false);
+  const autoTriedRef = useRef(false);
 
   useEffect(() => {
     // One-time browser/localStorage read — no SSR-safe way to compute this during render.
     if (browserSupportsWebAuthn()) {
+      const storedEmail = localStorage.getItem(BIOMETRIC_EMAIL_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBiometricEmail(localStorage.getItem(BIOMETRIC_EMAIL_KEY));
+      setBiometricEmail(storedEmail);
+      setBiometricName(localStorage.getItem(BIOMETRIC_NAME_KEY));
+      if (storedEmail) setEmail(storedEmail);
     }
   }, []);
 
@@ -56,8 +63,9 @@ export default function LoginPage() {
         body: JSON.stringify({ email: biometricEmail }),
       });
       if (!optionsRes.ok) {
-        setError("Não encontrei biometria cadastrada. Entre com sua senha.");
         setBiometricBusy(false);
+        setGreetingDismissed(true);
+        setError("Não encontrei biometria cadastrada. Entre com sua senha.");
         return;
       }
       const { options, token } = await optionsRes.json();
@@ -69,16 +77,32 @@ export default function LoginPage() {
         redirect: false,
       });
       if (res?.error) {
-        setError("Não consegui confirmar a biometria. Tente com sua senha.");
         setBiometricBusy(false);
+        setGreetingDismissed(true);
+        setError("Não consegui confirmar a biometria. Tente com sua senha.");
         return;
       }
       router.push("/home");
       router.refresh();
     } catch {
       setBiometricBusy(false);
+      setGreetingDismissed(true);
     }
   }
+
+  useEffect(() => {
+    // One-shot: try biometric login automatically as soon as we know this device has it set up.
+    if (autoTriedRef.current) return;
+    if (!biometricEmail) return;
+    autoTriedRef.current = true;
+    // Kicks off the native WebAuthn prompt as soon as we know this device has biometrics set up —
+    // not a state sync, so the cascading-render rule doesn't apply here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    handleBiometricLogin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biometricEmail]);
+
+  const showGreeting = !!biometricEmail && !greetingDismissed;
 
   return (
     <div
@@ -95,50 +119,71 @@ export default function LoginPage() {
           priority
           className="rounded-[18px] shadow-[0_0_32px_rgba(198,255,61,0.3)]"
         />
-        <div className="font-display text-[24px] font-bold">Entrar</div>
 
-        {biometricEmail && (
-          <button
-            onClick={handleBiometricLogin}
-            disabled={biometricBusy}
-            className="font-display mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-accent/40 bg-panel py-4 text-[15px] font-bold text-accent disabled:opacity-60"
-          >
-            <Fingerprint size={18} strokeWidth={2} />
-            {biometricBusy ? "Confirmando..." : "Entrar com biometria"}
-          </button>
+        {showGreeting ? (
+          <>
+            <div className="font-display text-center text-[24px] font-bold">
+              Bem-vindo de volta{biometricName ? `, ${biometricName}` : ""} 👋
+            </div>
+            <div className="mt-1 flex flex-col items-center gap-3">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-accent/40 bg-panel">
+                <Fingerprint size={26} strokeWidth={1.8} color="var(--accent)" />
+              </div>
+              <p className="text-[13px] text-dim">{biometricBusy ? "Confirmando biometria..." : "Aguardando biometria..."}</p>
+            </div>
+            <button
+              onClick={() => setGreetingDismissed(true)}
+              className="mt-2 text-[13px] font-semibold text-dim underline"
+            >
+              Usar senha em vez disso
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="font-display text-[24px] font-bold">Entrar</div>
+
+            {biometricEmail && (
+              <button
+                onClick={handleBiometricLogin}
+                disabled={biometricBusy}
+                className="font-display mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-accent/40 bg-panel py-4 text-[15px] font-bold text-accent disabled:opacity-60"
+              >
+                <Fingerprint size={18} strokeWidth={2} />
+                {biometricBusy ? "Confirmando..." : "Entrar com biometria"}
+              </button>
+            )}
+            {biometricEmail && <div className="flex w-full items-center gap-3 text-[11px] text-dim"><span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" /></div>}
+
+            <form onSubmit={handleSubmit} className="mt-2 flex w-full flex-col gap-3">
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="E-mail"
+                className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
+              />
+              <PasswordInput
+                value={password}
+                onChange={setPassword}
+                autoComplete="current-password"
+                placeholder="Senha"
+                autoFocus={!!biometricEmail}
+              />
+
+              {error && <p className="text-center text-[13px] font-semibold text-sodium">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="font-display mt-1.5 rounded-2xl bg-accent py-4 text-center text-base font-bold text-[#0B0B0C] disabled:opacity-60"
+              >
+                {loading ? "Entrando..." : "Entrar"}
+              </button>
+            </form>
+          </>
         )}
-        {biometricEmail && <div className="flex w-full items-center gap-3 text-[11px] text-dim"><span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" /></div>}
-
-        <form onSubmit={handleSubmit} className="mt-2 flex w-full flex-col gap-3">
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="E-mail"
-            className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
-          />
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Senha"
-            className="w-full rounded-2xl border border-line bg-panel px-4 py-4 text-[15px] outline-none focus:border-accent"
-          />
-
-          {error && <p className="text-center text-[13px] font-semibold text-sodium">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="font-display mt-1.5 rounded-2xl bg-accent py-4 text-center text-base font-bold text-[#0B0B0C] disabled:opacity-60"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
       </div>
 
       <div className="text-center text-[13px] text-dim">

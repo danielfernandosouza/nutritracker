@@ -1,4 +1,5 @@
-import { EXERCISE_LIBRARY, type ExerciseDef, type MuscleGroup, type Equipment } from "@/lib/exercises";
+import { EXERCISE_LIBRARY, suggestWorkoutName, type ExerciseDef, type MuscleGroup, type Equipment } from "@/lib/exercises";
+import { WEEKDAY_LABELS_FULL } from "@/lib/date";
 import type { Goal } from "@/lib/calculations";
 import type { Workout, Exercise } from "@/lib/workouts";
 
@@ -118,6 +119,21 @@ function prescriptionFor(def: ExerciseDef, goal: Goal): Pick<Exercise, "sets" | 
     : { sets: def.sets, reps: overrides.repsIsolation, rest: overrides.restIsolation };
 }
 
+/**
+ * Distribuição fixa de dias de treino pela semana, por `daysPerWeek` (0 = domingo .. 6 = sábado,
+ * igual `Date.getDay()`). Determinística — o mesmo `daysPerWeek` sempre cai nos mesmos dias, sem
+ * precisar de um campo novo no perfil pra guardar isso.
+ */
+const WEEKDAY_SPREAD: Record<number, number[]> = {
+  1: [3],
+  2: [1, 4],
+  3: [1, 3, 5],
+  4: [1, 2, 4, 5],
+  5: [1, 2, 3, 4, 5],
+  6: [1, 2, 3, 4, 5, 6],
+  7: [0, 1, 2, 3, 4, 5, 6],
+};
+
 /** Hard ceiling per session — even with every group favorited, a workout must stay practical (ACSM: ~4-6, up to ~8 for extra emphasis). */
 const MAX_EXERCISES_PER_DAY = 8;
 
@@ -140,6 +156,7 @@ export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
   const labelCounts: Record<string, number> = {};
   const workouts: Workout[] = [];
   const seedNum = hashSeed(prefs.seed);
+  const weekdaySpread = WEEKDAY_SPREAD[prefs.daysPerWeek] ?? WEEKDAY_SPREAD[4];
 
   for (let i = 0; i < prefs.daysPerWeek; i++) {
     const template = templates[i % templates.length];
@@ -158,12 +175,16 @@ export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
       return pickExercisesForGroup(group, prefs, occurrence, seedNum, wantsBonus ? 2 : 1);
     });
 
+    const weekday = weekdaySpread[i % weekdaySpread.length];
+
     workouts.push({
       id: `dia-${i + 1}`,
-      name: `${template.label}${suffix}`,
-      category: `Dia ${i + 1}`,
+      name: suggestWorkoutName(exercises.map((e) => e.muscleGroup)),
+      category: WEEKDAY_LABELS_FULL[weekday],
+      splitLabel: `${template.label}${suffix}`,
       color: template.color,
       day: `Dia ${i + 1}`,
+      weekday,
       duration: "45 min",
       level: "Intermediário",
       exercises,

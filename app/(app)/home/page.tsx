@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import { Ring } from "@/components/Ring";
 import { MacroRows } from "@/components/MacroRows";
 import { MealList } from "@/components/MealList";
@@ -234,13 +234,22 @@ export default function HomePage() {
           <div className="text-[13px] text-dim">{formatDateLabel(today)}</div>
           <div className="font-display text-[22px] font-bold">Olá{firstName ? `, ${firstName}` : ""} 👋</div>
         </div>
-        <button
-          onClick={() => setChatOpen(true)}
-          aria-label="Perguntar ao assistente"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-panel text-lg"
-        >
-          <MessageCircle size={18} strokeWidth={2} color="var(--accent)" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setChatOpen(true)}
+            aria-label="Perguntar ao assistente"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-panel text-lg"
+          >
+            <MessageCircle size={18} strokeWidth={2} color="var(--accent)" />
+          </button>
+          <button
+            onClick={openCreate}
+            aria-label="Adicionar refeição"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-accent shadow-[0_0_14px_rgba(198,255,61,0.35)]"
+          >
+            <Plus size={20} strokeWidth={2.4} color="#0B0B0C" />
+          </button>
+        </div>
       </div>
 
       {loadError ? (

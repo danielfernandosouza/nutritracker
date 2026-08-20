@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { EXERCISE_INSTRUCTIONS } from "@/lib/exercise-instructions";
 import { MUSCLE_GROUP_LABELS } from "@/lib/exercises";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import type { Exercise } from "@/lib/workouts";
 
 export function ExerciseDetailModal({
@@ -15,6 +16,7 @@ export function ExerciseDetailModal({
   color: string;
   onClose: () => void;
 }) {
+  useLockBodyScroll(true);
   const steps = exercise.demoName ? EXERCISE_INSTRUCTIONS[exercise.demoName] : undefined;
 
   return (

@@ -48,6 +48,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hide scrollbars everywhere — the app is meant to be scrolled by swipe/drag,
+   not with a visible track, on every screen size. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 /* Kill the native up/down spinner on number inputs everywhere — we build our
    own +/- controls where a stepper makes sense, and a bare spinner looks out
    of place against the rest of the design system. */

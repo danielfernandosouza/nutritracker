@@ -14,6 +14,8 @@ type ChatRequestBody = {
   images?: { data: string; mediaType: string }[];
   dayTotals: MealTotals;
   mode?: "meal" | "workout";
+  /** Força o uso da tool de estimativa mesmo sem foto — usado pelo registro de refeição por voz. */
+  forceTool?: boolean;
 };
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await request.json()) as ChatRequestBody;
-  const { message, images, dayTotals, mode = "meal" } = body;
+  const { message, images, dayTotals, mode = "meal", forceTool = false } = body;
 
   if (!message && (!images || images.length === 0)) {
     return NextResponse.json({ error: "message or images is required" }, { status: 400 });
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
       output_config: { effort: "low" },
       system,
       tools: [tool],
-      tool_choice: hasImages ? { type: "tool", name: tool.name } : { type: "auto" },
+      tool_choice: hasImages || forceTool ? { type: "tool", name: tool.name } : { type: "auto" },
       messages: [{ role: "user", content }],
     });
 

@@ -18,7 +18,7 @@ export function WeightChart({ entries }: { entries: Entry[] }) {
     return (
       <div className="flex h-[120px] flex-col items-center justify-center gap-1 text-center">
         <div className="font-display text-[24px] font-bold text-accent">{entries[0].weightKg}kg</div>
-        <p className="text-[12px] text-dim">Primeiro registro — a evolução aparece a partir do segundo.</p>
+        <p className="text-[12px] text-dim">Peso inicial — a evolução aparece conforme você for se pesando semanalmente.</p>
       </div>
     );
   }

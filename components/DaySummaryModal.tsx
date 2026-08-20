@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { MacroRows } from "@/components/MacroRows";
 import { MealIcon } from "@/components/MealIcon";
+import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { EMPTY_TOTALS, type MealTotals } from "@/lib/targets";
 import type { Meal } from "@/lib/types";
 
@@ -25,6 +26,8 @@ export function DaySummaryModal({
   targets: MealTotals;
   onClose: () => void;
 }) {
+  useLockBodyScroll(true);
+
   const totals = meals.reduce(
     (acc, m) => ({
       calories: acc.calories + m.calories,
