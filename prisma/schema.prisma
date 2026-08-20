@@ -26,6 +26,7 @@ model User {
   authenticators Authenticator[]
   waterEntries  WaterEntry[]
   sleepEntries  SleepEntry[]
+  exerciseSetLogs ExerciseSetLog[]
 }
 
 model Authenticator {
@@ -128,5 +129,21 @@ model WorkoutLog {
   photo           String?
   createdAt       DateTime @default(now())
 
+  @@index([userId, date])
+}
+
+model ExerciseSetLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         String
+  exerciseId   String
+  exerciseName String
+  setNumber    Int
+  weightKg     Float?
+  reps         Int?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, exerciseId, date])
   @@index([userId, date])
 }

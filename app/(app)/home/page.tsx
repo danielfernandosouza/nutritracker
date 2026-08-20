@@ -20,6 +20,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { toDateKey, formatDateLabel, lastDateKeys } from "@/lib/date";
 import { EMPTY_TOTALS, type MealTotals } from "@/lib/targets";
 import { computeWeeklySummary } from "@/lib/weekly-summary";
+import { estimateBaselineBurnKcal } from "@/lib/calorie-burn";
 import { computeSleepFeedback, type SleepFeedback } from "@/lib/wellness";
 import type { MetricKey } from "@/lib/metric-info";
 import type { Goal } from "@/lib/calculations";
@@ -34,6 +35,7 @@ export default function HomePage() {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [currentWeightKg, setCurrentWeightKg] = useState<number | null>(null);
   const [targets, setTargets] = useState<MealTotals | null>(null);
+  const [tdee, setTdee] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -98,6 +100,7 @@ export default function HomePage() {
       }
 
       setTargets(profileJson.targets);
+      setTdee(typeof profileJson.targets?.tdee === "number" ? profileJson.targets.tdee : null);
       setProfileName(profileJson.profile.name ?? null);
       setGoal(profileJson.profile.goal ?? null);
       const weightEntriesJson: { date: string; weightKg: number }[] = weightJson.entries ?? [];
@@ -207,7 +210,11 @@ export default function HomePage() {
     await loadAll();
   }
 
-  const kcalRemaining = targets ? Math.max(0, targets.calories - totals.calories) : 0;
+  const baselineBurnKcal = tdee ? estimateBaselineBurnKcal(tdee, today) : 0;
+  const workoutBurnKcal = workoutToday?.caloriesBurned ?? 0;
+  const burnedTodayKcal = Math.round(baselineBurnKcal + workoutBurnKcal);
+  const netConsumed = Math.max(0, totals.calories - burnedTodayKcal);
+  const kcalRemaining = targets ? Math.max(0, targets.calories - netConsumed) : 0;
 
   const firstName = profileName?.trim().split(/\s+/)[0] ?? null;
 
@@ -280,6 +287,11 @@ export default function HomePage() {
               </div>
               <div className="mt-1 text-[13px] text-dim">de {targets.calories} kcal</div>
               <div className="mt-2.5 text-[13px] font-semibold text-accent">{Math.round(kcalRemaining)} kcal restantes</div>
+              {burnedTodayKcal > 0 && (
+                <div className="mt-1 text-[11px] text-dim">
+                  🔥 ~{burnedTodayKcal} kcal queimadas hoje{workoutBurnKcal > 0 ? "" : " (estimativa)"}
+                </div>
+              )}
             </div>
           </button>
 

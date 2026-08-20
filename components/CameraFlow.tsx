@@ -66,6 +66,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   const [photos, setPhotos] = useState<CameraShot[]>([]);
   const [resultPhoto, setResultPhoto] = useState<string | null>(null);
   const [meal, setMeal] = useState<MealInput>(EMPTY_MEAL_INPUT);
+  const [note, setNote] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
@@ -78,6 +79,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     setPhotos([]);
     setResultPhoto(null);
     setMeal(EMPTY_MEAL_INPUT);
+    setNote("");
   }
 
   function handleCloseAll() {
@@ -127,6 +129,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
         body: JSON.stringify({
           images: photos.map((p) => ({ data: p.data, mediaType: p.mediaType })),
           dayTotals,
+          note: note.trim() || undefined,
         }),
       });
       const json = await res.json();
@@ -273,6 +276,17 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
               </button>
             )}
           </div>
+
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-dim">
+            Observação (opcional)
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder='Ex: "tem feijão escondido embaixo do arroz", "usei azeite extra"...'
+            rows={2}
+            className="mb-4 w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-3 text-sm outline-none focus:border-accent"
+          />
 
           <div className="flex-1" />
 

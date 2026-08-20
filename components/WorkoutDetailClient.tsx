@@ -10,6 +10,7 @@ import { ExerciseDetailModal } from "@/components/ExerciseDetailModal";
 import { WorkoutScanFlow } from "@/components/WorkoutScanFlow";
 import { RestTimerOverlay } from "@/components/RestTimerOverlay";
 import { RestSettingsSheet } from "@/components/RestSettingsSheet";
+import { SetTrackerSheet } from "@/components/SetTrackerSheet";
 import { EXERCISE_LIBRARY, MUSCLE_GROUP_LABELS, suggestWorkoutName, type ExerciseDef, type MuscleGroup } from "@/lib/exercises";
 import { toDateKey } from "@/lib/date";
 import { parseRestSeconds, formatRestSeconds } from "@/lib/rest-timer";
@@ -35,7 +36,6 @@ function exerciseIdByName(name: string): string | undefined {
 }
 
 export function WorkoutDetailClient({ workout }: { workout: Workout }) {
-  const [done, setDone] = useState<Record<number, boolean>>({});
   const [exercises, setExercises] = useState<Exercise[]>(workout.exercises);
   const [name, setName] = useState(workout.name);
   const [customName, setCustomName] = useState(false);
@@ -50,7 +50,11 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
   const [scanOpen, setScanOpen] = useState(false);
   const [restOverrideSeconds, setRestOverrideSeconds] = useState<number | null>(null);
   const [restSettingsOpen, setRestSettingsOpen] = useState(false);
-  const [activeRest, setActiveRest] = useState<{ seconds: number; exerciseName: string } | null>(null);
+  const [activeRest, setActiveRest] = useState<{ seconds: number; exerciseName: string; resumeIndex?: number } | null>(null);
+  const [setsLoggedByExerciseId, setSetsLoggedByExerciseId] = useState<Record<string, number>>({});
+  const [trackerIndex, setTrackerIndex] = useState<number | null>(null);
+  const [trackerSetNumber, setTrackerSetNumber] = useState(1);
+  const [trackerLastWeight, setTrackerLastWeight] = useState<number | null>(null);
   useLockBodyScroll(removeIndex !== null);
 
   async function refreshWorkoutLog() {
@@ -89,6 +93,21 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       refreshWorkoutLog();
     }
     triggerStreak();
+
+    async function loadSetsToday() {
+      try {
+        const res = await fetch(`/api/exercise-sets?date=${toDateKey(new Date())}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const rows: { exerciseId: string; setNumber: number }[] = json.sets ?? [];
+        const counts: Record<string, number> = {};
+        for (const r of rows) counts[r.exerciseId] = Math.max(counts[r.exerciseId] ?? 0, r.setNumber);
+        setSetsLoggedByExerciseId(counts);
+      } catch {
+        // não bloqueia a tela se a contagem de séries de hoje falhar ao carregar
+      }
+    }
+    loadSetsToday();
   }, [workout.id]);
 
   async function handleLogWorkout() {
@@ -127,13 +146,57 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
     setRestSettingsOpen(false);
   }
 
-  function handleToggleDone(idx: number, ex: Exercise) {
-    const nowDone = !done[idx];
-    setDone((d) => ({ ...d, [idx]: nowDone }));
-    if (nowDone) {
-      const seconds = restOverrideSeconds ?? parseRestSeconds(ex.rest);
-      setActiveRest({ seconds, exerciseName: ex.name });
+  async function openTracker(idx: number) {
+    const ex = exercises[idx];
+    const exId = exerciseIdByName(ex.name);
+    const totalSets = parseInt(ex.sets, 10) || 1;
+    const already = exId ? (setsLoggedByExerciseId[exId] ?? 0) : 0;
+    if (already >= totalSets) return;
+
+    setTrackerIndex(idx);
+    setTrackerSetNumber(already + 1);
+    setTrackerLastWeight(null);
+    if (!exId) return;
+    try {
+      const res = await fetch(`/api/exercise-sets?exerciseId=${exId}&days=30`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const sets: { weightKg: number | null }[] = json.sets ?? [];
+      const withWeight = sets.filter((s) => s.weightKg !== null);
+      setTrackerLastWeight(withWeight.length > 0 ? withWeight[withWeight.length - 1].weightKg : null);
+    } catch {
+      // sem prefill de carga se a busca falhar — usuário ainda pode digitar manualmente
     }
+  }
+
+  async function handleSaveSet(weightKg: number | null, reps: number | null) {
+    if (trackerIndex === null) return;
+    const idx = trackerIndex;
+    const ex = exercises[idx];
+    const exId = exerciseIdByName(ex.name) ?? ex.name;
+    const totalSets = parseInt(ex.sets, 10) || 1;
+    const setNumber = trackerSetNumber;
+
+    await fetch("/api/exercise-sets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: toDateKey(new Date()), exerciseId: exId, exerciseName: ex.name, setNumber, weightKg, reps }),
+    });
+
+    setSetsLoggedByExerciseId((s) => ({ ...s, [exId]: Math.max(s[exId] ?? 0, setNumber) }));
+    setTrackerIndex(null);
+
+    if (setNumber < totalSets) {
+      const seconds = restOverrideSeconds ?? parseRestSeconds(ex.rest);
+      setActiveRest({ seconds, exerciseName: ex.name, resumeIndex: idx });
+    }
+  }
+
+  function handleIncreaseSets() {
+    if (trackerIndex === null) return;
+    const idx = trackerIndex;
+    const next = exercises.map((ex, i) => (i === idx ? { ...ex, sets: String((parseInt(ex.sets, 10) || 1) + 1) } : ex));
+    applyExercises(next);
   }
 
   function applyExercises(next: Exercise[]) {
@@ -256,12 +319,15 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
 
       <div className="flex flex-col gap-2.5">
         {exercises.map((ex, idx) => {
-          const isDone = !!done[idx];
+          const exId = exerciseIdByName(ex.name);
+          const totalSets = parseInt(ex.sets, 10) || 1;
+          const loggedSets = exId ? (setsLoggedByExerciseId[exId] ?? 0) : 0;
+          const isDone = loggedSets >= totalSets;
           return (
             <div key={idx} className="flex items-center gap-3.5 rounded-2xl border border-line bg-panel px-4 py-3.5">
               <button
-                onClick={() => handleToggleDone(idx, ex)}
-                aria-label={isDone ? "Desmarcar exercício" : "Marcar exercício concluído"}
+                onClick={() => openTracker(idx)}
+                aria-label={isDone ? "Séries concluídas" : "Registrar série"}
                 className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-2"
                 style={{
                   borderColor: isDone ? workout.color : "#3A3C3F",
@@ -287,7 +353,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
                   <Info size={9} strokeWidth={3} color="#0B0B0C" />
                 </span>
               </button>
-              <button onClick={() => setDetailIndex(idx)} className="min-w-0 flex-1 text-left">
+              <button onClick={() => (isDone ? setDetailIndex(idx) : openTracker(idx))} className="min-w-0 flex-1 text-left">
                 <div
                   className="text-sm font-semibold"
                   style={{ textDecoration: isDone ? "line-through" : "none", color: isDone ? "#6A6A70" : "var(--chalk)" }}
@@ -295,7 +361,8 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
                   {ex.name}
                 </div>
                 <div className="mt-0.5 text-xs text-dim">
-                  {ex.sets}x {ex.reps} · descanso {restOverrideSeconds !== null ? formatRestSeconds(restOverrideSeconds) : ex.rest}
+                  {loggedSets > 0 && !isDone ? `${loggedSets}/${totalSets} séries` : `${ex.sets}x ${ex.reps}`} · descanso{" "}
+                  {restOverrideSeconds !== null ? formatRestSeconds(restOverrideSeconds) : ex.rest}
                   {ex.muscleGroup && ` · ${MUSCLE_GROUP_LABELS[ex.muscleGroup]}`}
                 </div>
               </button>
@@ -365,7 +432,26 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
           totalSeconds={activeRest.seconds}
           exerciseName={activeRest.exerciseName}
           color="var(--accent)"
-          onClose={() => setActiveRest(null)}
+          onClose={() => {
+            const resumeIndex = activeRest.resumeIndex;
+            setActiveRest(null);
+            if (resumeIndex !== undefined) openTracker(resumeIndex);
+          }}
+        />
+      )}
+
+      {trackerIndex !== null && (
+        <SetTrackerSheet
+          open
+          exerciseName={exercises[trackerIndex].name}
+          setNumber={trackerSetNumber}
+          totalSets={parseInt(exercises[trackerIndex].sets, 10) || 1}
+          suggestedReps={exercises[trackerIndex].reps}
+          lastWeightKg={trackerLastWeight}
+          color={workout.color}
+          onClose={() => setTrackerIndex(null)}
+          onIncreaseSets={handleIncreaseSets}
+          onSave={handleSaveSet}
         />
       )}
 
@@ -395,6 +481,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       {detailIndex !== null && (
         <ExerciseDetailModal
           exercise={exercises[detailIndex]}
+          exerciseId={exerciseIdByName(exercises[detailIndex].name)}
           color={workout.color}
           onClose={() => setDetailIndex(null)}
         />

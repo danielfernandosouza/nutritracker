@@ -147,12 +147,21 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
             <Link
               key={dateKey}
               href={`/workouts/${workout.id}`}
-              className="flex flex-col gap-3 rounded-[18px] border p-4.5"
+              className="relative flex flex-col gap-3 rounded-[18px] border p-4.5"
               style={{
-                borderColor: isToday ? "var(--accent)" : "var(--line)",
-                background: "var(--panel)",
+                borderColor: done ? "var(--accent)" : isToday ? "var(--accent)" : "var(--line)",
+                background: done ? "color-mix(in srgb, var(--accent) 9%, var(--panel))" : "var(--panel)",
               }}
             >
+              {done && (
+                <span
+                  className="absolute right-3.5 top-3.5 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold"
+                  style={{ background: "var(--accent)", color: "#0B0B0C" }}
+                >
+                  <Check size={11} strokeWidth={3} />
+                  Feito
+                </span>
+              )}
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-dim">
@@ -164,26 +173,23 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
                       {workout.splitLabel}
                     </span>
                   </div>
-                  <div className="font-display mt-1 flex items-center gap-1.5 text-[17px] font-bold">
-                    <span style={{ textDecoration: done ? "underline" : "none" }}>{workout.name}</span>
-                    {done && (
-                      <span
-                        className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full"
-                        style={{ background: workout.color }}
-                      >
-                        <Check size={10} strokeWidth={3} color="#0B0B0C" />
-                      </span>
-                    )}
+                  <div
+                    className="font-display mt-1 text-[17px] font-bold"
+                    style={{ textDecoration: done ? "line-through" : "none", color: done ? "var(--dim)" : "var(--chalk)" }}
+                  >
+                    {workout.name}
                   </div>
                 </div>
-                <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: workout.color }}
-                >
-                  <Icon size={18} color="#0B0B0C" strokeWidth={2.3} />
-                </div>
+                {!done && (
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: workout.color }}
+                  >
+                    <Icon size={18} color="#0B0B0C" strokeWidth={2.3} />
+                  </div>
+                )}
               </div>
-              <div className="flex gap-4 text-xs text-dim">
+              <div className="flex gap-4 text-xs text-dim" style={{ opacity: done ? 0.75 : 1 }}>
                 <span>{workout.duration}</span>
                 <span>{workout.exercises.length} exercícios</span>
                 <span>{workout.level}</span>

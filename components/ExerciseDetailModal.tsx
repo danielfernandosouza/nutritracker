@@ -1,23 +1,55 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, TrendingUp } from "lucide-react";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { EXERCISE_INSTRUCTIONS } from "@/lib/exercise-instructions";
 import { MUSCLE_GROUP_LABELS } from "@/lib/exercises";
 import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
+import { computeProgressionNudge } from "@/lib/progression";
 import type { Exercise } from "@/lib/workouts";
+
+type SetHistoryRow = { date: string; setNumber: number; weightKg: number | null; reps: number | null };
 
 export function ExerciseDetailModal({
   exercise,
+  exerciseId,
   color,
   onClose,
 }: {
   exercise: Exercise;
+  exerciseId?: string;
   color: string;
   onClose: () => void;
 }) {
   useLockBodyScroll(true);
   const steps = exercise.demoName ? EXERCISE_INSTRUCTIONS[exercise.demoName] : undefined;
+
+  const [history, setHistory] = useState<SetHistoryRow[] | null>(null);
+
+  useEffect(() => {
+    if (!exerciseId) return;
+    let cancelled = false;
+    fetch(`/api/exercise-sets?exerciseId=${exerciseId}&days=14`)
+      .then((res) => (res.ok ? res.json() : { sets: [] }))
+      .then((json) => {
+        if (!cancelled) setHistory(json.sets ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setHistory([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [exerciseId]);
+
+  const byDate = new Map<string, number>();
+  for (const row of history ?? []) {
+    if (row.weightKg === null) continue;
+    byDate.set(row.date, Math.max(byDate.get(row.date) ?? 0, row.weightKg));
+  }
+  const dailyMax = [...byDate.entries()].map(([date, weightKg]) => ({ date, weightKg })).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const showNudge = dailyMax.length > 0 && computeProgressionNudge(dailyMax);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -52,6 +84,31 @@ export function ExerciseDetailModal({
             <ExerciseDemo demoName={exercise.demoName} size={"100%" as unknown as number} />
           </div>
         </div>
+
+        {exerciseId && dailyMax.length > 0 && (
+          <div className="px-5 pt-5">
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+              <span className="text-[13px] font-bold">Histórico de carga (14 dias)</span>
+            </div>
+            {showNudge && (
+              <div className="mb-3 flex items-start gap-2.5 rounded-2xl border px-4 py-3" style={{ borderColor: "var(--accent)", background: "color-mix(in srgb, var(--accent) 10%, var(--panel))" }}>
+                <TrendingUp size={16} strokeWidth={2.2} color="var(--accent)" className="mt-0.5 shrink-0" />
+                <p className="text-[13px] leading-snug text-chalk">
+                  Você está há cerca de 2 semanas na mesma carga nesse exercício — bora tentar aumentar um pouco?
+                </p>
+              </div>
+            )}
+            <div className="mb-1 flex gap-2 overflow-x-auto">
+              {dailyMax.map((d) => (
+                <div key={d.date} className="flex shrink-0 flex-col items-center rounded-xl border border-line bg-track px-3 py-2">
+                  <span className="num text-[13px] font-bold">{d.weightKg}kg</span>
+                  <span className="text-[10px] text-dim">{d.date.slice(5).split("-").reverse().join("/")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="px-5 pb-6 pt-5">
           <div className="mb-2.5 flex items-center gap-2">

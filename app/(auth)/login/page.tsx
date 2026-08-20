@@ -23,6 +23,22 @@ export default function LoginPage() {
   const autoTriedRef = useRef(false);
 
   useEffect(() => {
+    // Landing on /login while a session is still valid usually means the user hit "back" onto a
+    // stale history entry from before they logged in — bounce forward instead of showing a form
+    // that looks like they got logged out.
+    let cancelled = false;
+    fetch("/api/profile").then((res) => {
+      if (!cancelled && res.ok) {
+        router.replace("/home");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     // One-time browser/localStorage read — no SSR-safe way to compute this during render.
     if (browserSupportsWebAuthn()) {
       const storedEmail = localStorage.getItem(BIOMETRIC_EMAIL_KEY);

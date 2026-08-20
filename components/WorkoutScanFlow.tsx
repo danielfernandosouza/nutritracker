@@ -141,7 +141,7 @@ export function WorkoutScanFlow({
 
   return (
     <div className="fixed inset-0 z-50 mx-auto flex w-full max-w-[480px] flex-col bg-bg">
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
 
       {stage === "idle" && (
         <div className="relative flex-1 bg-black">
@@ -178,15 +178,28 @@ export function WorkoutScanFlow({
             </div>
             <div className="flex flex-col items-center gap-3.5 pb-6">
               {!cameraError && (
-                <button
-                  onClick={handleCapture}
-                  disabled={!cameraReady}
-                  aria-label="Capturar foto"
-                  className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-white disabled:opacity-50"
-                >
-                  <span className="block h-[60px] w-[60px] rounded-full bg-accent" />
-                </button>
+                <div className="flex items-center gap-5">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Escolher da galeria"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white"
+                  >
+                    <ImageIcon size={18} strokeWidth={2} />
+                  </button>
+                  <button
+                    onClick={handleCapture}
+                    disabled={!cameraReady}
+                    aria-label="Capturar foto"
+                    className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-white disabled:opacity-50"
+                  >
+                    <span className="block h-[60px] w-[60px] rounded-full bg-accent" />
+                  </button>
+                  <div className="w-11" />
+                </div>
               )}
+              <p className="text-[11px] font-medium text-white/70">
+                Tire uma foto do relógio ou escolha um print do Strava/Samsung Health na galeria
+              </p>
               {process.env.NODE_ENV !== "production" && (
                 <button
                   onClick={loadMock}

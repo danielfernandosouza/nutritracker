@@ -16,6 +16,8 @@ type ChatRequestBody = {
   mode?: "meal" | "workout";
   /** Força o uso da tool de estimativa mesmo sem foto — usado pelo registro de refeição por voz. */
   forceTool?: boolean;
+  /** Observação complementar do usuário sobre a foto (ex: "tem feijão escondido no prato") — some ao prompt padrão, não o substitui. */
+  note?: string;
 };
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await request.json()) as ChatRequestBody;
-  const { message, images, dayTotals, mode = "meal", forceTool = false } = body;
+  const { message, images, dayTotals, mode = "meal", forceTool = false, note } = body;
 
   if (!message && (!images || images.length === 0)) {
     return NextResponse.json({ error: "message or images is required" }, { status: 400 });
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
     hasImages && images.length > 1
       ? " As fotos são ângulos diferentes da mesma refeição — combine as informações de todas elas numa única estimativa."
       : "";
+  const userNote = note?.trim() ? ` Observação do usuário sobre o prato: "${note.trim()}".` : "";
 
   content.push({
     type: "text",
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
       message ||
       (mode === "workout"
         ? "Leia a duração e as calorias gastas nessa foto."
-        : `Estime os valores nutricionais dessa refeição.${multiPhotoNote}`),
+        : `Estime os valores nutricionais dessa refeição.${multiPhotoNote}${userNote}`),
   });
 
   const tool = mode === "workout" ? WORKOUT_ESTIMATE_TOOL : MEAL_ESTIMATE_TOOL;
