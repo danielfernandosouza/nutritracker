@@ -81,7 +81,7 @@ export function ExerciseDetailModal({
 
         <div className="px-5">
           <div className="overflow-hidden rounded-2xl bg-track" style={{ aspectRatio: "1 / 1" }}>
-            <ExerciseDemo demoName={exercise.demoName} imageUrl={exercise.imageUrl} size={"100%" as unknown as number} />
+            <ExerciseDemo demoName={exercise.demoName} size={"100%" as unknown as number} />
           </div>
         </div>
 

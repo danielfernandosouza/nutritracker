@@ -1,14 +1,6 @@
 # Plano: expandir a biblioteca de exercícios com wger + free-exercise-db
 
-Status: **executado em 2026-08-20** — Opção A aplicada. 27 exercícios novos importados da wger
-(CC-BY-SA 4.0) e curados manualmente, adicionados em `lib/exercises.ts` (biblioteca foi de 70 para
-97 exercícios). `ExerciseDef`/`Exercise` ganharam um campo `imageUrl?: string` (foto única) além do
-`demoName?: string` existente (par de frames do free-exercise-db), já que a wger fornece uma foto
-só por exercício — `components/ExerciseDemo.tsx` foi atualizado pra suportar os dois formatos.
-Linha de crédito adicionada no rodapé da tela de Perfil. Gatilho: dia de treino "Puxar"
-(costas+bíceps) só tinha 2-3 exercícios — a causa raiz real era o algoritmo de distribuição
-(`allocateExerciseCounts`, corrigido antes desta expansão), mas a biblioteca também foi ampliada
-já que estava sendo revisitada mesmo.
+Status: **não iniciado** — planejado em 2026-08-19, pronto pra ser executado quando decidirmos.
 
 ## Contexto
 

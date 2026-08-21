@@ -28,15 +28,7 @@ function storageKey(workoutId: string) {
 }
 
 function toExercise(def: ExerciseDef): Exercise {
-  return {
-    name: def.name,
-    sets: def.sets,
-    reps: def.reps,
-    rest: def.rest,
-    demoName: def.demoName,
-    imageUrl: def.imageUrl,
-    muscleGroup: def.muscleGroup,
-  };
+  return { name: def.name, sets: def.sets, reps: def.reps, rest: def.rest, demoName: def.demoName, muscleGroup: def.muscleGroup };
 }
 
 function exerciseIdByName(name: string): string | undefined {
@@ -368,7 +360,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
                 aria-label="Ver como executar"
                 className="relative shrink-0"
               >
-                <ExerciseDemo demoName={ex.demoName} imageUrl={ex.imageUrl} />
+                <ExerciseDemo demoName={ex.demoName} />
                 <span
                   className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-panel"
                   style={{ background: "var(--accent)" }}

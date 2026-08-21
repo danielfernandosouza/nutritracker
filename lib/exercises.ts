@@ -22,8 +22,6 @@ export type ExerciseDef = {
   rest: string;
   /** Exact exercise name in the free-exercise-db dataset (yuhonas/free-exercise-db), used to fetch demo images. */
   demoName?: string;
-  /** Foto única (não par de frames) vinda da wger (CC-BY-SA) — usada quando não há demoName no free-exercise-db. */
-  imageUrl?: string;
 };
 
 export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
@@ -129,54 +127,6 @@ export const EXERCISE_LIBRARY: ExerciseDef[] = [
   { id: "hanging-leg-raise", name: "Elevação de pernas (na barra)", muscleGroup: "abs", equipment: "bodyweight", sets: "3", reps: "10-15", rest: "45s", demoName: "Hanging Leg Raise" },
   { id: "bicycle-crunch", name: "Abdominal bicicleta", muscleGroup: "abs", equipment: "bodyweight", sets: "3", reps: "15-20 (cada)", rest: "30s", demoName: "Air Bike" },
   { id: "russian-twist", name: "Rotação russa (russian twist)", muscleGroup: "abs", equipment: "bodyweight", sets: "3", reps: "15-20 (cada)", rest: "30s", demoName: "Russian Twist" },
-
-  // Importados da wger.de (CC-BY-SA 4.0) — expansão de variedade, ver docs/plano-biblioteca-exercicios-wger.md
-  // Peito
-  { id: "decline-bench-press", name: "Supino declinado com barra", muscleGroup: "chest", equipment: "free_weight", sets: "4", reps: "8-10", rest: "90s", imageUrl: "https://wger.de/media/exercise-images/100/Decline-bench-press-1.png" },
-  { id: "dumbbell-floor-press", name: "Supino no chão com halteres", muscleGroup: "chest", equipment: "free_weight", sets: "3", reps: "10-12", rest: "75s", imageUrl: "https://wger.de/media/exercise-images/1084/91dd5a95-1c45-46f2-a074-de41b6ad599b.jpg" },
-  { id: "decline-pushup", name: "Flexão declinada (pés elevados)", muscleGroup: "chest", equipment: "bodyweight", sets: "3", reps: "10-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1112/81f40bee-4adf-4317-8476-1a87706e3031.png" },
-
-  // Costas
-  { id: "deadlift", name: "Levantamento terra", muscleGroup: "back", equipment: "free_weight", sets: "4", reps: "6-8", rest: "120s", imageUrl: "https://wger.de/media/exercise-images/184/1709c405-620a-4d07-9658-fade2b66a2df.jpeg" },
-  { id: "t-bar-row", name: "Remada cavalinho (T-bar)", muscleGroup: "back", equipment: "free_weight", sets: "4", reps: "8-10", rest: "90s", imageUrl: "https://wger.de/media/exercise-images/106/T-bar-row-1.png" },
-  { id: "close-grip-lat-pulldown", name: "Puxada supinada fechada", muscleGroup: "back", equipment: "cable", sets: "3", reps: "10-12", rest: "60s", imageUrl: "https://wger.de/media/exercise-images/1127/4942b7c0-6bda-4983-88e5-86547c3d445e.png" },
-  { id: "barbell-shrug", name: "Encolhimento de ombros com barra", muscleGroup: "back", equipment: "free_weight", sets: "3", reps: "12-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/570/68b4a33f-40f1-4dda-b56c-a2e20ed13903.jpg" },
-
-  // Bíceps
-  { id: "cable-hammer-curl", name: "Rosca martelo no cabo", muscleGroup: "biceps", equipment: "cable", sets: "3", reps: "12-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/138/Hammer-curls-with-rope-1.png" },
-  { id: "ez-bar-preacher-curl", name: "Rosca Scott com barra EZ", muscleGroup: "biceps", equipment: "free_weight", sets: "3", reps: "10-12", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/193/Preacher-curl-3-1.png" },
-  { id: "reverse-barbell-curl", name: "Rosca inversa com barra", muscleGroup: "biceps", equipment: "free_weight", sets: "3", reps: "10-12", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1290/c05818bf-1c81-46df-9f24-42e354265388.png" },
-
-  // Tríceps
-  { id: "close-grip-bench-press", name: "Supino fechado (foco em tríceps)", muscleGroup: "triceps", equipment: "free_weight", sets: "4", reps: "8-10", rest: "90s", imageUrl: "https://wger.de/media/exercise-images/88/Narrow-grip-bench-press-1.png" },
-  { id: "bench-dips", name: "Mergulho entre bancos", muscleGroup: "triceps", equipment: "bodyweight", sets: "3", reps: "10-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/83/Bench-dips-1.png" },
-
-  // Quadríceps
-  { id: "barbell-step-back-lunge", name: "Afundo com passada e barra", muscleGroup: "quads", equipment: "free_weight", sets: "3", reps: "10-12 (cada)", rest: "60s", imageUrl: "https://wger.de/media/exercise-images/1830/3b6c547c-ab3d-4472-93cf-561710279eab.jpg" },
-  { id: "reverse-nordic-curl", name: "Nordic curl reverso (excêntrico de quadríceps)", muscleGroup: "quads", equipment: "bodyweight", sets: "3", reps: "8-12", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/909/159222d9-c1e4-46ae-89ee-6a2dfaab978d.png" },
-
-  // Posterior de coxa
-  { id: "sumo-deadlift", name: "Levantamento terra sumô", muscleGroup: "hamstrings", equipment: "free_weight", sets: "4", reps: "6-8", rest: "120s", imageUrl: "https://wger.de/media/exercise-images/630/b0f0c7d8-5878-4d9e-b820-21acc013741d.webp" },
-  { id: "single-leg-dumbbell-deadlift", name: "Terra unilateral com halter", muscleGroup: "hamstrings", equipment: "free_weight", sets: "3", reps: "10-12 (cada)", rest: "60s", imageUrl: "https://wger.de/media/exercise-images/1736/aa724cc5-c485-4f3e-9d2a-0c6ae4baefbe.png" },
-
-  // Glúteo
-  { id: "bodyweight-lunge", name: "Afundo (peso corporal)", muscleGroup: "glutes", equipment: "bodyweight", sets: "3", reps: "12-15 (cada)", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/984/5c7ffe68-e7b2-47f3-a22a-f9cc28640432.png" },
-  { id: "reverse-lunge", name: "Afundo reverso", muscleGroup: "glutes", equipment: "bodyweight", sets: "3", reps: "12-15 (cada)", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/999/d0931eb3-8db0-4049-bb08-aa4036072056.jfif" },
-  { id: "dumbbell-hip-thrust", name: "Elevação de quadril com halter", muscleGroup: "glutes", equipment: "free_weight", sets: "4", reps: "10-12", rest: "75s", imageUrl: "https://wger.de/media/exercise-images/1642/a81ad922-caf5-47f8-99b4-640cb0717436.webp" },
-  { id: "cable-glute-extension", name: "Extensão de glúteo no cabo", muscleGroup: "glutes", equipment: "cable", sets: "3", reps: "12-15 (cada)", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1131/3bcf3024-2dcc-4995-9694-55aa2c2e4a9a.png" },
-
-  // Panturrilha
-  { id: "seated-dumbbell-calf-raise", name: "Panturrilha sentado com halteres", muscleGroup: "calves", equipment: "free_weight", sets: "4", reps: "15-20", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1620/edd40e39-e337-4460-a8dd-6127d40ddd16.jpeg" },
-
-  // Abdômen
-  { id: "barbell-ab-rollout", name: "Rollout abdominal com barra", muscleGroup: "abs", equipment: "free_weight", sets: "3", reps: "8-12", rest: "60s", imageUrl: "https://wger.de/media/exercise-images/41/34b37423-269f-43d4-9d29-d2a90eeaa6b4.png" },
-  { id: "bird-dog", name: "Bird dog (estabilidade de tronco)", muscleGroup: "abs", equipment: "bodyweight", sets: "3", reps: "10-12 (cada)", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1572/3d14e761-a73d-49da-8804-f3016a7573ff.png" },
-  { id: "weighted-crunch", name: "Abdominal com peso", muscleGroup: "abs", equipment: "free_weight", sets: "3", reps: "12-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/1648/63ae02d6-6dd9-4e9e-84da-d4905e78a33c.jpg" },
-
-  // Ombro
-  { id: "overhead-barbell-press", name: "Desenvolvimento militar com barra", muscleGroup: "shoulders", equipment: "free_weight", sets: "4", reps: "8-10", rest: "90s", imageUrl: "https://wger.de/media/exercise-images/1893/7dbad19e-0616-41fd-9d7d-3e21649c0eea.png" },
-  { id: "dumbbell-upright-row", name: "Remada alta com halteres", muscleGroup: "shoulders", equipment: "free_weight", sets: "3", reps: "10-12", rest: "60s", imageUrl: "https://wger.de/media/exercise-images/694/119e6823-6960-4341-a9e1-aaf78d7fb57c.png" },
-  { id: "cable-rear-delt-fly", name: "Crucifixo invertido no cabo", muscleGroup: "shoulders", equipment: "cable", sets: "3", reps: "12-15", rest: "45s", imageUrl: "https://wger.de/media/exercise-images/822/74affc0d-03b6-4f33-b5f4-a822a2615f68.png" },
 ];
 
 const DEMO_BASE_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
