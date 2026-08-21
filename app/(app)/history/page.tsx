@@ -34,7 +34,7 @@ export default async function HistoryPage() {
     }),
     prisma.workoutLog.findMany({
       where: { userId: session.user.id, date: { gte: historyStart } },
-      select: { date: true },
+      select: { date: true, workoutName: true, caloriesBurned: true, durationMinutes: true },
     }),
     prisma.weightEntry.findMany({
       where: { userId: session.user.id, date: { gte: historyStart } },
@@ -43,7 +43,7 @@ export default async function HistoryPage() {
   ]);
 
   const todayKey = toDateKey(new Date());
-  const workoutDates = new Set(workoutLogs.map((w) => w.date));
+  const workoutByDate = new Map(workoutLogs.map((w) => [w.date, w]));
   const weightByDate = new Map(weightEntries.map((w) => [w.date, w.weightKg]));
 
   const byDate = new Map<string, typeof meals>();
@@ -55,12 +55,16 @@ export default async function HistoryPage() {
 
   const days = Array.from(byDate.entries())
     .slice(0, 30)
-    .map(([dateKey, dayMeals]) => ({
-      dateKey,
-      meals: dayMeals.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })),
-      hasWorkout: workoutDates.has(dateKey),
-      weightKg: weightByDate.get(dateKey) ?? null,
-    }));
+    .map(([dateKey, dayMeals]) => {
+      const workoutLog = workoutByDate.get(dateKey);
+      return {
+        dateKey,
+        meals: dayMeals.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })),
+        hasWorkout: !!workoutLog,
+        caloriesBurnedFromWorkout: workoutLog?.caloriesBurned ?? null,
+        weightKg: weightByDate.get(dateKey) ?? null,
+      };
+    });
 
   return (
     <div className="px-5 pb-6 pt-6">
@@ -69,7 +73,7 @@ export default async function HistoryPage() {
       {days.length === 0 ? (
         <p className="text-sm text-dim">Nenhuma refeição registrada ainda.</p>
       ) : (
-        <HistoryDayList days={days} targets={targets} todayKey={todayKey} />
+        <HistoryDayList days={days} targets={targets} todayKey={todayKey} tdee={targets.tdee} goal={profile.goal as ProfileInput["goal"]} />
       )}
     </div>
   );

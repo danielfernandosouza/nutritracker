@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Plus } from "lucide-react";
-import { Ring } from "@/components/Ring";
 import { MacroRows } from "@/components/MacroRows";
 import { MealList } from "@/components/MealList";
 import { MealFormSheet } from "@/components/MealFormSheet";
 import { WeeklySummaryCard } from "@/components/WeeklySummaryCard";
 import { DaySummaryModal } from "@/components/DaySummaryModal";
 import { WeightLogSheet } from "@/components/WeightLogSheet";
-import { WorkoutStreakCard } from "@/components/WorkoutStreakCard";
+import { HomeCarousel } from "@/components/HomeCarousel";
 import { WaterCard } from "@/components/WaterCard";
 import { SleepCard } from "@/components/SleepCard";
 import { SleepLogSheet } from "@/components/SleepLogSheet";
@@ -275,27 +274,18 @@ export default function HomePage() {
         </div>
       ) : (
         <>
-          <button
-            onClick={() => setOpenMetric("calories")}
-            className="mb-4 flex w-full items-center gap-5 rounded-3xl border border-line bg-panel p-6 text-left"
-          >
-            <Ring value={totals.calories} target={targets.calories} color="var(--accent)" />
-            <div>
-              <div className="flex items-baseline gap-1">
-                <span className="font-display text-[28px] font-bold leading-none">{Math.round(totals.calories)}</span>
-                <span className="text-[13px] font-semibold text-dim">kcal</span>
-              </div>
-              <div className="mt-1 text-[13px] text-dim">de {targets.calories} kcal</div>
-              <div className="mt-2.5 text-[13px] font-semibold text-accent">{Math.round(kcalRemaining)} kcal restantes</div>
-              {burnedTodayKcal > 0 && (
-                <div className="mt-1 text-[11px] text-dim">
-                  🔥 ~{burnedTodayKcal} kcal queimadas hoje{workoutBurnKcal > 0 ? "" : " (estimativa)"}
-                </div>
-              )}
-            </div>
-          </button>
-
-          <WorkoutStreakCard streak={workoutStreak} loggedToday={workoutLoggedToday} today={workoutToday} />
+          <HomeCarousel
+            totalsCalories={totals.calories}
+            targetCalories={targets.calories}
+            kcalRemaining={kcalRemaining}
+            burnedTodayKcal={burnedTodayKcal}
+            workoutBurnKcal={workoutBurnKcal}
+            onOpenCaloriesInfo={() => setOpenMetric("calories")}
+            workoutStreak={workoutStreak}
+            workoutLoggedToday={workoutLoggedToday}
+            workoutToday={workoutToday}
+            goal={goal ?? "maintain"}
+          />
 
           <WaterCard totalMl={waterTotalMl} targetMl={waterTargetMl} onAdd={handleAddWater} onOpenInfo={() => setOpenMetric("water")} />
           <SleepCard feedback={sleepFeedback} onOpenInfo={() => setOpenMetric("sleep")} />

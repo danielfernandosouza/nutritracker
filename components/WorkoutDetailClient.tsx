@@ -55,6 +55,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
   const [trackerIndex, setTrackerIndex] = useState<number | null>(null);
   const [trackerSetNumber, setTrackerSetNumber] = useState(1);
   const [trackerLastWeight, setTrackerLastWeight] = useState<number | null>(null);
+  const [thisWorkoutLoggedToday, setThisWorkoutLoggedToday] = useState(false);
   useLockBodyScroll(removeIndex !== null);
 
   async function refreshWorkoutLog() {
@@ -64,6 +65,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       const json = await res.json();
       setLoggedToday(!!json.loggedToday);
       setStreak(typeof json.streak === "number" ? json.streak : null);
+      setThisWorkoutLoggedToday(json.today?.planDayId === workout.id);
     } catch {
       // não bloqueia a tela de treino se o streak falhar ao carregar
     }
@@ -108,6 +110,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       }
     }
     loadSetsToday();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workout.id]);
 
   async function handleLogWorkout() {
@@ -151,7 +154,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
     const exId = exerciseIdByName(ex.name);
     const totalSets = parseInt(ex.sets, 10) || 1;
     const already = exId ? (setsLoggedByExerciseId[exId] ?? 0) : 0;
-    if (already >= totalSets) return;
+    if (already >= totalSets || thisWorkoutLoggedToday) return;
 
     setTrackerIndex(idx);
     setTrackerSetNumber(already + 1);
@@ -183,12 +186,24 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
       body: JSON.stringify({ date: toDateKey(new Date()), exerciseId: exId, exerciseName: ex.name, setNumber, weightKg, reps }),
     });
 
-    setSetsLoggedByExerciseId((s) => ({ ...s, [exId]: Math.max(s[exId] ?? 0, setNumber) }));
+    const updatedCounts = { ...setsLoggedByExerciseId, [exId]: Math.max(setsLoggedByExerciseId[exId] ?? 0, setNumber) };
+    setSetsLoggedByExerciseId(updatedCounts);
     setTrackerIndex(null);
 
     if (setNumber < totalSets) {
       const seconds = restOverrideSeconds ?? parseRestSeconds(ex.rest);
       setActiveRest({ seconds, exerciseName: ex.name, resumeIndex: idx });
+      return;
+    }
+
+    // Every set of every exercise done — log the whole workout automatically so "Concluir
+    // treino" and the per-exercise checkmarks never drift out of sync with each other.
+    const allExercisesDone = exercises.every((e) => {
+      const eId = exerciseIdByName(e.name) ?? e.name;
+      return (updatedCounts[eId] ?? 0) >= (parseInt(e.sets, 10) || 1);
+    });
+    if (allExercisesDone && !loggedToday) {
+      handleLogWorkout();
     }
   }
 
@@ -322,7 +337,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
           const exId = exerciseIdByName(ex.name);
           const totalSets = parseInt(ex.sets, 10) || 1;
           const loggedSets = exId ? (setsLoggedByExerciseId[exId] ?? 0) : 0;
-          const isDone = loggedSets >= totalSets;
+          const isDone = loggedSets >= totalSets || thisWorkoutLoggedToday;
           return (
             <div key={idx} className="flex items-center gap-3.5 rounded-2xl border border-line bg-panel px-4 py-3.5">
               <button
