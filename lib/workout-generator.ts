@@ -188,6 +188,61 @@ function assignWeekdays(daysPerWeek: number, restWeekdays: number[]): number[] {
 /** Hard ceiling per session — even with every group favorited, a workout must stay practical (ACSM: ~4-6, up to ~8 for extra emphasis). */
 const MAX_EXERCISES_PER_DAY = 8;
 
+/** Grupos "grandes" — ganham exercícios extra primeiro quando sobra orçamento na sessão. */
+const MAJOR_GROUPS = new Set<MuscleGroup>(["chest", "back", "shoulders", "quads", "hamstrings"]);
+
+/**
+ * Quantos exercícios uma sessão de treino de verdade costuma ter, independente de quantos grupos
+ * musculares ela toca naquele dia — um dia de "Puxar" (só costas+bíceps) precisa de mais exercícios
+ * por grupo que um full-body (6 grupos de uma vez), senão vira um treino de 2-3 exercícios, curto
+ * demais pra estimular hipertrofia de verdade (~5-7 exercícios/sessão é a faixa comum em programas
+ * de hipertrofia reais).
+ */
+const SESSION_TARGET_EXERCISES = 6;
+
+/**
+ * Decide quantos exercícios cada grupo muscular do dia recebe. Parte de 1 por grupo (cobertura
+ * garantida) e distribui o resto do "orçamento" da sessão — priorizando grupos favoritados, depois
+ * grupos grandes — até bater a meta da sessão ou o teto por grupo (que se ajusta conforme quantos
+ * grupos existem naquele dia: um dia de um grupo só, tipo bro-split, pode concentrar bem mais).
+ */
+function allocateExerciseCounts(groups: MuscleGroup[], favoriteMuscleGroups: MuscleGroup[]): Map<MuscleGroup, number> {
+  const counts = new Map<MuscleGroup, number>(groups.map((g) => [g, 1]));
+  const target = Math.min(SESSION_TARGET_EXERCISES, MAX_EXERCISES_PER_DAY);
+  const perGroupCap = Math.min(4, Math.ceil(target / groups.length) + 1);
+  let remaining = Math.max(0, target - groups.length);
+
+  const favorites = groups.filter((g) => favoriteMuscleGroups.includes(g));
+  const majors = groups.filter((g) => MAJOR_GROUPS.has(g));
+  const priorityOrder = [...favorites, ...favorites, ...majors, ...groups];
+
+  let i = 0;
+  let stalled = 0;
+  while (remaining > 0 && priorityOrder.length > 0 && stalled < priorityOrder.length * 2) {
+    const g = priorityOrder[i % priorityOrder.length];
+    const current = counts.get(g) ?? 1;
+    if (current < perGroupCap) {
+      counts.set(g, current + 1);
+      remaining--;
+      stalled = 0;
+    } else {
+      stalled++;
+    }
+    i++;
+  }
+
+  // Bônus extra pros grupos favoritados, além da meta da sessão, dentro do teto máximo — preserva
+  // a ênfase pedida explicitamente pelo usuário mesmo depois que a sessão já bateu o alvo geral.
+  let bonusBudget = MAX_EXERCISES_PER_DAY - [...counts.values()].reduce((a, b) => a + b, 0);
+  for (const g of favorites) {
+    if (bonusBudget <= 0) break;
+    counts.set(g, (counts.get(g) ?? 1) + 1);
+    bonusBudget--;
+  }
+
+  return counts;
+}
+
 function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, occurrence: number, seedNum: number, count: number): Exercise[] {
   const candidates = EXERCISE_LIBRARY.filter((e) => e.muscleGroup === group);
   const equipmentFiltered = filterByEquipment(candidates, prefs.equipmentPreference);
@@ -217,15 +272,10 @@ export function generateWorkoutPlan(prefs: WorkoutPreferences): Workout[] {
     const occurrenceForLabel = labelCounts[template.label];
     const suffix = occurrenceForLabel > 1 ? ` ${String.fromCharCode(64 + occurrenceForLabel)}` : "";
 
-    // Baseline: one exercise per group, so every muscle group is always hit. Favorited groups
-    // get a bonus second exercise, but only while there's still room under the session cap —
-    // otherwise marking many groups as favorite could blow the session back up to 12+.
-    let bonusBudget = MAX_EXERCISES_PER_DAY - template.groups.length;
-    const exercises = template.groups.flatMap((group) => {
-      const wantsBonus = prefs.favoriteMuscleGroups.includes(group) && bonusBudget > 0;
-      if (wantsBonus) bonusBudget--;
-      return pickExercisesForGroup(group, prefs, occurrence, seedNum, wantsBonus ? 2 : 1);
-    });
+    const groupCounts = allocateExerciseCounts(template.groups, prefs.favoriteMuscleGroups);
+    const exercises = template.groups.flatMap((group) =>
+      pickExercisesForGroup(group, prefs, occurrence, seedNum, groupCounts.get(group) ?? 1),
+    );
 
     const weekday = weekdaySpread[i % weekdaySpread.length];
 
