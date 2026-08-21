@@ -78,7 +78,12 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
         const raw = localStorage.getItem(storageKey(workout.id));
         if (!raw) return;
         const parsed = JSON.parse(raw) as StoredOverride;
-        if (parsed.exercises?.length) setExercises(parsed.exercises);
+        // A cached override can reference an exercise that no longer exists in the current
+        // library (e.g. after we remove/rename entries) — that shows up as a name with no valid
+        // demo image at all. Rather than trust stale data, discard the cached list and keep the
+        // freshly generated `workout.exercises` (always valid against today's library) instead.
+        const hasStaleExercise = parsed.exercises?.some((ex) => !ex.demoName && !exerciseIdByName(ex.name));
+        if (parsed.exercises?.length && !hasStaleExercise) setExercises(parsed.exercises);
         if (parsed.customName) {
           setCustomName(true);
           setName(parsed.name);
