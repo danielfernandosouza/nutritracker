@@ -6,6 +6,8 @@ export type Exercise = {
   reps: string;
   rest: string;
   demoName?: string;
+  /** Foto única (wger, CC-BY-SA) usada quando não há demoName no free-exercise-db. */
+  imageUrl?: string;
   muscleGroup?: MuscleGroup;
 };
 

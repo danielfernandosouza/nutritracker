@@ -106,6 +106,9 @@ const HIGH_LOAD_IDS = new Set([
   "pullup",
   "dips",
   "hanging-leg-raise",
+  "deadlift",
+  "sumo-deadlift",
+  "barbell-step-back-lunge",
 ]);
 
 function filterByAge(list: ExerciseDef[], age: number): ExerciseDef[] {
@@ -253,6 +256,7 @@ function pickExercisesForGroup(group: MuscleGroup, prefs: WorkoutPreferences, oc
     name: def.name,
     ...prescriptionFor(def, prefs.goal),
     demoName: def.demoName,
+    imageUrl: def.imageUrl,
     muscleGroup: group,
   }));
 }

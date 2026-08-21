@@ -120,6 +120,14 @@ export default async function ProfilePage() {
         {session.user.email && <BiometricSetupButton email={session.user.email} name={session.user.name} />}
         <LogoutButton />
       </div>
+
+      <p className="mt-6 text-center text-[11px] text-dim">
+        Parte das fotos de exercícios vem da{" "}
+        <a href="https://wger.de" target="_blank" rel="noopener noreferrer" className="underline">
+          wger.de
+        </a>{" "}
+        (CC-BY-SA 4.0).
+      </p>
     </div>
   );
 }

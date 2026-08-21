@@ -101,7 +101,7 @@ export function ExercisePickerSheet({
               }}
               className="flex items-center gap-3.5 rounded-2xl border border-line bg-track px-3.5 py-3 text-left active:opacity-70"
             >
-              <ExerciseDemo demoName={ex.demoName} size={48} />
+              <ExerciseDemo demoName={ex.demoName} imageUrl={ex.imageUrl} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{ex.name}</div>
                 <div className="mt-0.5 text-xs text-dim">
