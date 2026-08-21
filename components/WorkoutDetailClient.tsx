@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Pencil, Repeat2, Trash2, Plus, Info, Flame, CheckCircle2, Watch, Timer } from "lucide-react";
+import { ChevronLeft, Pencil, Repeat2, Trash2, Plus, Info, Flame, CheckCircle2, Watch, Timer, ArrowUpDown, ChevronUp, ChevronDown, Check } from "lucide-react";
 import type { Workout, Exercise } from "@/lib/workouts";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { ExercisePickerSheet } from "@/components/ExercisePickerSheet";
@@ -56,6 +56,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
   const [trackerSetNumber, setTrackerSetNumber] = useState(1);
   const [trackerLastWeight, setTrackerLastWeight] = useState<number | null>(null);
   const [thisWorkoutLoggedToday, setThisWorkoutLoggedToday] = useState(false);
+  const [reordering, setReordering] = useState(false);
   useLockBodyScroll(removeIndex !== null);
 
   async function refreshWorkoutLog() {
@@ -221,6 +222,14 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
     persist(next, finalName, customName);
   }
 
+  function moveExercise(idx: number, direction: -1 | 1) {
+    const target = idx + direction;
+    if (target < 0 || target >= exercises.length) return;
+    const next = [...exercises];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    applyExercises(next);
+  }
+
   function handleSwap(def: ExerciseDef) {
     if (swapIndex === null) return;
     const next = exercises.map((ex, i) => (i === swapIndex ? toExercise(def) : ex));
@@ -332,6 +341,18 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
         </div>
       </div>
 
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-dim">Exercícios</span>
+        <button
+          onClick={() => setReordering((r) => !r)}
+          className="flex items-center gap-1.5 text-[12px] font-semibold"
+          style={{ color: reordering ? "var(--accent)" : "var(--dim)" }}
+        >
+          {reordering ? <Check size={13} strokeWidth={2.4} /> : <ArrowUpDown size={13} strokeWidth={2.2} />}
+          {reordering ? "Pronto" : "Reordenar"}
+        </button>
+      </div>
+
       <div className="flex flex-col gap-2.5">
         {exercises.map((ex, idx) => {
           const exId = exerciseIdByName(ex.name);
@@ -381,20 +402,43 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
                   {ex.muscleGroup && ` · ${MUSCLE_GROUP_LABELS[ex.muscleGroup]}`}
                 </div>
               </button>
-              <button
-                onClick={() => setSwapIndex(idx)}
-                aria-label="Trocar exercício"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-track text-dim"
-              >
-                <Repeat2 size={15} strokeWidth={2} />
-              </button>
-              <button
-                onClick={() => setRemoveIndex(idx)}
-                aria-label="Remover exercício"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-track text-dim"
-              >
-                <Trash2 size={14} strokeWidth={2} />
-              </button>
+              {reordering ? (
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button
+                    onClick={() => moveExercise(idx, -1)}
+                    disabled={idx === 0}
+                    aria-label="Mover pra cima"
+                    className="flex h-6 w-8 items-center justify-center rounded-md bg-track text-dim disabled:opacity-30"
+                  >
+                    <ChevronUp size={14} strokeWidth={2.4} />
+                  </button>
+                  <button
+                    onClick={() => moveExercise(idx, 1)}
+                    disabled={idx === exercises.length - 1}
+                    aria-label="Mover pra baixo"
+                    className="flex h-6 w-8 items-center justify-center rounded-md bg-track text-dim disabled:opacity-30"
+                  >
+                    <ChevronDown size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSwapIndex(idx)}
+                    aria-label="Trocar exercício"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-track text-dim"
+                  >
+                    <Repeat2 size={15} strokeWidth={2} />
+                  </button>
+                  <button
+                    onClick={() => setRemoveIndex(idx)}
+                    aria-label="Remover exercício"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-track text-dim"
+                  >
+                    <Trash2 size={14} strokeWidth={2} />
+                  </button>
+                </>
+              )}
             </div>
           );
         })}
