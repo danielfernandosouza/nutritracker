@@ -27,6 +27,20 @@ model User {
   waterEntries  WaterEntry[]
   sleepEntries  SleepEntry[]
   exerciseSetLogs ExerciseSetLog[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** SHA-256 hash do token — o token bruto só existe no link do e-mail, nunca salvo em texto puro. */
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Authenticator {

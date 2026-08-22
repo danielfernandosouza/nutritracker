@@ -181,6 +181,9 @@ export default function LoginPage() {
               >
                 {loading ? "Entrando..." : "Entrar"}
               </button>
+              <Link href="/forgot-password" className="text-center text-[13px] font-semibold text-dim">
+                Esqueci minha senha
+              </Link>
             </form>
           </>
         )}
