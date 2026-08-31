@@ -8,6 +8,9 @@ import { MUSCLE_GROUP_ICONS, dominantMuscleGroup } from "@/lib/muscle-icons";
 import { ChevronLeft, ChevronRight, Dumbbell, Check, Moon } from "lucide-react";
 import { weekDateKeys, formatWeekdayShort, toDateKey } from "@/lib/date";
 import { WorkoutSettingsSheet } from "@/components/WorkoutSettingsSheet";
+import { CardioLogSheet } from "@/components/CardioLogSheet";
+
+const CARDIO_ACTIVITY_LABELS: Record<string, string> = { RUN: "Corrida", WALK: "Caminhada", HIKE: "Trilha" };
 
 export const dynamic = "force-dynamic";
 
@@ -50,16 +53,20 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
   const todayKey = toDateKey(new Date());
   const weekLogs = await prisma.workoutLog.findMany({
     where: { userId: session.user.id, date: { in: weekKeys } },
-    select: { date: true, planDayId: true },
+    select: { date: true, planDayId: true, type: true, cardioActivity: true, distanceKm: true },
   });
+  const strengthWeekLogs = weekLogs.filter((l) => l.type === "STRENGTH");
   // A workout is "done this week" if it was logged on ANY day within the week, not necessarily
   // the exact calendar date its weekday would suggest — users often log a workout on a different
   // day than it was nominally scheduled for (e.g. catching up late), and the card should still
   // show as completed for the week either way.
-  const weekPlanDayIds = new Set(weekLogs.map((l) => l.planDayId).filter((id): id is string => !!id));
+  const weekPlanDayIds = new Set(strengthWeekLogs.map((l) => l.planDayId).filter((id): id is string => !!id));
   // Logging via the watch-photo scan doesn't carry a planDayId (it's "did something", not tied to
   // a specific plan day) — fall back to the exact date so those still show as done on their card.
-  const weekLoggedDates = new Set(weekLogs.map((l) => l.date));
+  const weekLoggedDates = new Set(strengthWeekLogs.map((l) => l.date));
+  const cardioByDate = new Map(
+    weekLogs.filter((l) => l.type === "CARDIO").map((l) => [l.date, l]),
+  );
 
   return (
     <div className="px-5 pb-6 pt-6">
@@ -113,6 +120,10 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
         </Link>
       </div>
 
+      <div className="mb-3">
+        <CardioLogSheet />
+      </div>
+
       <div className="flex flex-col gap-3">
         {weekKeys.map((dateKey) => {
           const d = new Date(`${dateKey}T00:00:00`);
@@ -122,19 +133,31 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
           const dayLabel = `${formatWeekdayShort(d)} · ${d.getDate()}`;
 
           if (!workout) {
+            const restDayCardio = cardioByDate.get(dateKey);
             return (
               <div
                 key={dateKey}
-                className="flex items-center gap-3 rounded-[18px] border border-dashed border-line px-4.5 py-3.5"
-                style={{ opacity: 0.7 }}
+                className="flex items-center justify-between gap-3 rounded-[18px] border border-dashed border-line px-4.5 py-3.5"
+                style={{ opacity: restDayCardio ? 1 : 0.7 }}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-track">
-                  <Moon size={15} strokeWidth={2} color="var(--dim)" />
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-track">
+                    <Moon size={15} strokeWidth={2} color="var(--dim)" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-dim">{dayLabel}</div>
+                    <div className="text-[13px] font-semibold text-dim">Dia de descanso</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-dim">{dayLabel}</div>
-                  <div className="text-[13px] font-semibold text-dim">Dia de descanso</div>
-                </div>
+                {restDayCardio && (
+                  <span
+                    className="rounded-full px-2 py-1 text-[10px] font-bold"
+                    style={{ background: "rgba(198,255,61,0.14)", color: "var(--accent)" }}
+                  >
+                    🏃 {CARDIO_ACTIVITY_LABELS[restDayCardio.cardioActivity ?? "RUN"]}
+                    {restDayCardio.distanceKm ? ` · ${restDayCardio.distanceKm.toFixed(1)} km` : ""}
+                  </span>
+                )}
               </div>
             );
           }
@@ -142,6 +165,7 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
           const group = dominantMuscleGroup(workout.exercises.map((e) => e.muscleGroup));
           const Icon = group ? MUSCLE_GROUP_ICONS[group] : Dumbbell;
           const done = weekPlanDayIds.has(workout.id) || weekLoggedDates.has(dateKey);
+          const cardio = cardioByDate.get(dateKey);
 
           return (
             <Link
@@ -194,6 +218,15 @@ export default async function WorkoutsPage(props: PageProps<"/workouts">) {
                 <span>{workout.exercises.length} exercícios</span>
                 <span>{workout.level}</span>
               </div>
+              {cardio && (
+                <span
+                  className="w-fit rounded-full px-2 py-1 text-[10px] font-bold"
+                  style={{ background: "rgba(198,255,61,0.14)", color: "var(--accent)" }}
+                >
+                  🏃 {CARDIO_ACTIVITY_LABELS[cardio.cardioActivity ?? "RUN"]}
+                  {cardio.distanceKm ? ` · ${cardio.distanceKm.toFixed(1)} km` : ""}
+                </span>
+              )}
             </Link>
           );
         })}

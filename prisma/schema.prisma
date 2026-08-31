@@ -28,6 +28,7 @@ model User {
   sleepEntries  SleepEntry[]
   exerciseSetLogs ExerciseSetLog[]
   passwordResetTokens PasswordResetToken[]
+  stravaAccount StravaAccount?
 }
 
 model PasswordResetToken {
@@ -136,6 +137,8 @@ model WorkoutLog {
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date            String
+  /** "STRENGTH" | "CARDIO" */
+  type            String   @default("STRENGTH")
   workoutName     String
   planDayId       String?
   durationMinutes Float?
@@ -143,7 +146,31 @@ model WorkoutLog {
   photo           String?
   createdAt       DateTime @default(now())
 
+  /** "RUN" | "WALK" | "HIKE" — só preenchido quando type = "CARDIO" */
+  cardioActivity   String?
+  distanceKm       Float?
+  paceMinPerKm     Float?
+  /** "MANUAL" | "PHOTO" | "STRAVA" */
+  source           String?
+  stravaActivityId String? @unique
+  /** encoded polyline (summary_polyline do Strava) */
+  routePolyline    String?
+
   @@index([userId, date])
+  @@index([userId, type, date])
+}
+
+model StravaAccount {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  athleteId    String
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model ExerciseSetLog {
