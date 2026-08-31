@@ -6,11 +6,10 @@ import { generateWorkoutPlan, type WorkoutPreferences } from "@/lib/workout-gene
 import type { MuscleGroup } from "@/lib/exercises";
 import { MUSCLE_GROUP_ICONS, dominantMuscleGroup } from "@/lib/muscle-icons";
 import { ChevronLeft, ChevronRight, Dumbbell, Check, Moon, Footprints } from "lucide-react";
-import { weekDateKeys, formatWeekdayShort, formatDateLabel, toDateKey } from "@/lib/date";
+import { weekDateKeys, formatWeekdayShort, toDateKey } from "@/lib/date";
 import { WorkoutSettingsSheet } from "@/components/WorkoutSettingsSheet";
 import { CardioLogSheet } from "@/components/CardioLogSheet";
-
-const CARDIO_ACTIVITY_LABELS: Record<string, string> = { RUN: "Corrida", WALK: "Caminhada", HIKE: "Trilha" };
+import { CardioSessionList } from "@/components/CardioSessionList";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +22,6 @@ function formatWeekRangeLabel(weekKeys: string[]): string {
     return `${first.getDate()} – ${last.getDate()} de ${MONTHS_SHORT[first.getMonth()]}`;
   }
   return `${first.getDate()} ${MONTHS_SHORT[first.getMonth()]} – ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]}`;
-}
-
-function formatPace(paceMinPerKm: number | null): string {
-  if (paceMinPerKm === null || !Number.isFinite(paceMinPerKm)) return "—";
-  const totalSeconds = Math.round(paceMinPerKm * 60);
-  const min = Math.floor(totalSeconds / 60);
-  const sec = totalSeconds % 60;
-  return `${min}:${String(sec).padStart(2, "0")} /km`;
 }
 
 export default async function WorkoutsPage(props: PageProps<"/workouts">) {
@@ -274,41 +265,7 @@ async function CardioTab({ userId }: { userId: string }) {
         <CardioLogSheet />
       </div>
 
-      {sessions.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-[18px] border border-dashed border-line px-4.5 py-8 text-center">
-          <Footprints size={22} strokeWidth={1.8} color="var(--dim)" />
-          <p className="text-[13px] text-dim">Nenhuma corrida ou caminhada registrada ainda.</p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {sessions.map((s) => {
-            const d = new Date(`${s.date}T00:00:00`);
-            return (
-              <div key={s.id} className="flex items-center gap-3 rounded-[18px] border border-line bg-panel px-4.5 py-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(198,255,61,0.14)" }}>
-                  <Footprints size={16} strokeWidth={2.2} color="var(--accent)" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-dim">
-                    {formatDateLabel(d)}
-                  </div>
-                  <div className="font-display mt-0.5 text-[15px] font-bold">
-                    {CARDIO_ACTIVITY_LABELS[s.cardioActivity ?? "RUN"]}
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                  <span className="text-[13px] font-bold text-chalk">
-                    {s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : "—"}
-                  </span>
-                  <span className="text-[11px] text-dim">
-                    {formatPace(s.paceMinPerKm)} · {s.durationMinutes ? `${Math.round(s.durationMinutes)} min` : "—"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <CardioSessionList sessions={sessions} />
     </>
   );
 }

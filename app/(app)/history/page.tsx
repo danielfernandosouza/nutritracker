@@ -43,7 +43,15 @@ export default async function HistoryPage() {
   ]);
 
   const todayKey = toDateKey(new Date());
-  const workoutByDate = new Map(workoutLogs.map((w) => [w.date, w]));
+  // Um dia pode ter treino de força E cardio — soma as calorias dos dois em vez de um
+  // sobrescrever o outro (bug corrigido: antes usava um Map de log único por data).
+  const workoutByDate = new Map<string, number | null>();
+  for (const w of workoutLogs) {
+    const prev = workoutByDate.get(w.date) ?? null;
+    if (w.caloriesBurned != null) workoutByDate.set(w.date, (prev ?? 0) + w.caloriesBurned);
+    else if (!workoutByDate.has(w.date)) workoutByDate.set(w.date, null);
+  }
+  const workoutDatesWithLog = new Set(workoutLogs.map((w) => w.date));
   const weightByDate = new Map(weightEntries.map((w) => [w.date, w.weightKg]));
 
   const byDate = new Map<string, typeof meals>();
@@ -56,12 +64,11 @@ export default async function HistoryPage() {
   const days = Array.from(byDate.entries())
     .slice(0, 30)
     .map(([dateKey, dayMeals]) => {
-      const workoutLog = workoutByDate.get(dateKey);
       return {
         dateKey,
         meals: dayMeals.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })),
-        hasWorkout: !!workoutLog,
-        caloriesBurnedFromWorkout: workoutLog?.caloriesBurned ?? null,
+        hasWorkout: workoutDatesWithLog.has(dateKey),
+        caloriesBurnedFromWorkout: workoutByDate.get(dateKey) ?? null,
         weightKg: weightByDate.get(dateKey) ?? null,
       };
     });

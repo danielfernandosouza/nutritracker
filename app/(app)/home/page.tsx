@@ -111,9 +111,14 @@ export default function HomePage() {
       setWeightEntries((weightJson.entries ?? []).map((e: { date: string; weightKg: number }) => ({ date: e.date, weightKg: e.weightKg })));
       setWorkoutStreak(workoutLogJson.streak ?? 0);
       setWorkoutLoggedToday(!!workoutLogJson.loggedToday);
+      const strengthToday = workoutLogJson.today;
+      const cardioToday = workoutLogJson.todayCardio;
       setWorkoutToday(
-        workoutLogJson.today
-          ? { durationMinutes: workoutLogJson.today.durationMinutes ?? null, caloriesBurned: workoutLogJson.today.caloriesBurned ?? null }
+        strengthToday || cardioToday
+          ? {
+              durationMinutes: (strengthToday?.durationMinutes ?? 0) + (cardioToday?.durationMinutes ?? 0) || null,
+              caloriesBurned: (strengthToday?.caloriesBurned ?? 0) + (cardioToday?.caloriesBurned ?? 0) || null,
+            }
           : null,
       );
       setLoading(false);

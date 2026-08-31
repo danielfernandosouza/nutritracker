@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { toDateKey, lastDateKeys } from "@/lib/date";
 import { computeStreakFromDates } from "@/lib/streak";
 import { isPhotoTooLarge } from "@/lib/photo";
+import { estimateCardioBurnKcal, type CardioActivity } from "@/lib/cardio-burn";
 
 export async function GET() {
   const session = await auth();
@@ -58,11 +59,26 @@ export async function POST(request: NextRequest) {
 
   const logType = type === "CARDIO" ? "CARDIO" : "STRENGTH";
 
+  let resolvedCalories = caloriesBurned !== undefined ? Number(caloriesBurned) || null : undefined;
+  if (logType === "CARDIO" && !resolvedCalories && distanceKm && durationMinutes) {
+    const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { weightKg: true } });
+    if (profile) {
+      resolvedCalories = Math.round(
+        estimateCardioBurnKcal(
+          (cardioActivity as CardioActivity) || "RUN",
+          Number(distanceKm),
+          Number(durationMinutes),
+          profile.weightKg,
+        ),
+      );
+    }
+  }
+
   const data = {
     workoutName,
     planDayId: planDayId !== undefined ? planDayId || null : undefined,
     durationMinutes: durationMinutes !== undefined ? Number(durationMinutes) || null : undefined,
-    caloriesBurned: caloriesBurned !== undefined ? Number(caloriesBurned) || null : undefined,
+    caloriesBurned: resolvedCalories,
     photo: photo !== undefined ? photo || null : undefined,
     cardioActivity: cardioActivity !== undefined ? cardioActivity || null : undefined,
     distanceKm: distanceKm !== undefined ? Number(distanceKm) || null : undefined,
