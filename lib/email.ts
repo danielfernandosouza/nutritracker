@@ -7,11 +7,7 @@ function getClient(): Resend {
   return client;
 }
 
-/**
- * Sem domínio verificado no Resend, o remetente precisa ser esse endereço sandbox — e, nesse
- * modo, o Resend só entrega pro e-mail dono da conta usada pra gerar a API key.
- */
-const FROM = "NutriTracker <onboarding@resend.dev>";
+const FROM = "NutriTracker <naoresponda@nutritracker.com.br>";
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   await getClient().emails.send({
