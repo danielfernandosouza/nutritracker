@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Dumbbell, Check, Moon, Footprints } from "lu
 import { weekDateKeys, formatWeekdayShort, toDateKey } from "@/lib/date";
 import { WorkoutSettingsSheet } from "@/components/WorkoutSettingsSheet";
 import { CardioLogSheet } from "@/components/CardioLogSheet";
+import { CardioScanFlow } from "@/components/CardioScanFlow";
 import { CardioSessionList } from "@/components/CardioSessionList";
 
 export const dynamic = "force-dynamic";
@@ -261,8 +262,11 @@ async function CardioTab({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="mb-5">
-        <CardioLogSheet />
+      <div className="mb-5 flex gap-2.5">
+        <div className="flex-1">
+          <CardioLogSheet />
+        </div>
+        <CardioScanFlow />
       </div>
 
       <CardioSessionList sessions={sessions} />

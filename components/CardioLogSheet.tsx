@@ -84,7 +84,7 @@ export function CardioLogSheet() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-3 rounded-[18px] border border-line bg-panel px-4.5 py-3.5 text-left"
+        className="flex w-full items-center gap-3 rounded-[18px] border border-line bg-panel px-4.5 py-3.5 text-left"
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(198,255,61,0.14)" }}>
           <Footprints size={16} strokeWidth={2.2} color="var(--accent)" />

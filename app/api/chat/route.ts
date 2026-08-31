@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/auth";
-import { anthropic, MODEL, MEAL_ESTIMATE_TOOL, WORKOUT_ESTIMATE_TOOL, buildSystemPrompt, buildWorkoutSystemPrompt } from "@/lib/anthropic";
+import {
+  anthropic,
+  MODEL,
+  MEAL_ESTIMATE_TOOL,
+  WORKOUT_ESTIMATE_TOOL,
+  CARDIO_ESTIMATE_TOOL,
+  buildSystemPrompt,
+  buildWorkoutSystemPrompt,
+  buildCardioSystemPrompt,
+} from "@/lib/anthropic";
 import { prisma } from "@/lib/db";
 import { computeTargets, type ProfileInput } from "@/lib/calculations";
 import { isPhotoTooLarge } from "@/lib/photo";
@@ -13,7 +22,7 @@ type ChatRequestBody = {
   message?: string;
   images?: { data: string; mediaType: string }[];
   dayTotals: MealTotals;
-  mode?: "meal" | "workout";
+  mode?: "meal" | "workout" | "cardio";
   /** Força o uso da tool de estimativa mesmo sem foto — usado pelo registro de refeição por voz. */
   forceTool?: boolean;
   /** Observação complementar do usuário sobre a foto (ex: "tem feijão escondido no prato") — some ao prompt padrão, não o substitui. */
@@ -82,11 +91,14 @@ export async function POST(request: NextRequest) {
       message ||
       (mode === "workout"
         ? "Leia a duração e as calorias gastas nessa foto."
-        : `Estime os valores nutricionais dessa refeição.${multiPhotoNote}${userNote}`),
+        : mode === "cardio"
+          ? "Leia a distância, duração e ritmo dessa corrida/caminhada nessa foto."
+          : `Estime os valores nutricionais dessa refeição.${multiPhotoNote}${userNote}`),
   });
 
-  const tool = mode === "workout" ? WORKOUT_ESTIMATE_TOOL : MEAL_ESTIMATE_TOOL;
-  const system = mode === "workout" ? buildWorkoutSystemPrompt() : buildSystemPrompt(dayTotals, targets);
+  const tool = mode === "workout" ? WORKOUT_ESTIMATE_TOOL : mode === "cardio" ? CARDIO_ESTIMATE_TOOL : MEAL_ESTIMATE_TOOL;
+  const system =
+    mode === "workout" ? buildWorkoutSystemPrompt() : mode === "cardio" ? buildCardioSystemPrompt() : buildSystemPrompt(dayTotals, targets);
 
   try {
     const response = await anthropic.messages.create({
