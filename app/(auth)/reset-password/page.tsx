@@ -54,6 +54,13 @@ function ResetPasswordForm() {
   if (done) {
     return (
       <div className="mt-2 flex flex-col items-center gap-3 text-center">
+        <Image
+          src="/icons/icon-512.png"
+          alt="NutriTracker"
+          width={72}
+          height={72}
+          className="rounded-[18px] shadow-[0_0_32px_rgba(198,255,61,0.3)]"
+        />
         <p className="text-[14px] leading-relaxed text-dim">Senha redefinida! Levando você pro login...</p>
       </div>
     );
