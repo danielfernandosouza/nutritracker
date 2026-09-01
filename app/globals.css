@@ -312,3 +312,35 @@ input[type="number"] {
     background: color-mix(in srgb, var(--accent) 14%, var(--bg));
   }
 }
+
+/*
+ * Vai e volta do texto que não cabe na largura disponível (nome de música/artista no mini-player).
+ * O quanto deslocar vem de --marquee-shift, medido em tempo de execução; as pausas nas pontas dão
+ * tempo de ler o começo e o fim antes de inverter o sentido.
+ */
+@keyframes marqueeSlide {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  45%,
+  55% {
+    transform: translateX(var(--marquee-shift));
+  }
+  88%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marqueeSlide var(--marquee-duration) ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-text {
+    animation: none;
+  }
+}

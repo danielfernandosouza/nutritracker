@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Play, Pause, SkipBack, SkipForward, Music } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
+import { MarqueeText } from "@/components/MarqueeText";
 
 type PlayerStatus = {
   enabled: boolean;
@@ -39,20 +40,37 @@ export function SpotifyMiniPlayer({ onActiveChange }: { onActiveChange: (active:
     // assíncrono, e não numa cascata de renderização — a regra não distingue os dois casos.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") load();
     }, POLL_MS);
-    return () => clearInterval(timer);
+
+    // O caminho normal é sair do app, dar play no Spotify e voltar — atualizar na volta faz o
+    // player aparecer na hora, em vez de só na próxima batida do relógio.
+    function handleVisibility() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [load]);
 
-  const active = !!status?.enabled && !!status.connected;
+  // Só aparece quando há de fato uma música carregada no Spotify (tocando ou pausada). Com o
+  // Spotify fechado não há o que controlar, então o player some em vez de ocupar espaço à toa.
+  // Continuar visível na pausa é de propósito: se sumisse ao pausar, não haveria como dar play.
+  const track = status?.track ?? null;
+  const active = !!status?.enabled && !!status.connected && !status.noDevice && !!track;
+
   useEffect(() => {
     if (lastActiveRef.current === active) return;
     lastActiveRef.current = active;
     onActiveChange(active);
   }, [active, onActiveChange]);
 
-  if (!active) return null;
+  if (!active || !track) return null;
 
   async function send(action: "play" | "pause" | "next" | "previous") {
     setBusy(true);
@@ -80,15 +98,13 @@ export function SpotifyMiniPlayer({ onActiveChange }: { onActiveChange: (active:
     }
   }
 
-  const track = status?.track;
-
   return (
     <div className="fixed bottom-[88px] left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 px-5">
       <div
         className="flex items-center gap-3 rounded-2xl border border-line px-3 py-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
         style={{ background: "rgba(23,24,26,0.94)", backdropFilter: "blur(16px)" }}
       >
-        {track?.albumArt ? (
+        {track.albumArt ? (
           <Image
             src={track.albumArt}
             alt=""
@@ -98,20 +114,16 @@ export function SpotifyMiniPlayer({ onActiveChange }: { onActiveChange: (active:
             className="h-[38px] w-[38px] shrink-0 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg bg-track">
-            <Music size={16} strokeWidth={2} color="#1DB954" />
-          </div>
+          <div className="h-[38px] w-[38px] shrink-0 rounded-lg bg-track" />
         )}
 
         <div className="min-w-0 flex-1">
           {error ? (
             <div className="truncate text-[12px] font-semibold text-sodium">{error}</div>
-          ) : status?.noDevice || !track ? (
-            <div className="truncate text-[12px] text-dim">Abra o Spotify pra controlar por aqui</div>
           ) : (
             <>
-              <div className="truncate text-[13px] font-semibold">{track.name}</div>
-              <div className="truncate text-[11px] text-dim">{track.artist}</div>
+              <MarqueeText text={track.name} className="text-[13px] font-semibold" />
+              <MarqueeText text={track.artist} className="text-[11px] text-dim" />
             </>
           )}
         </div>
