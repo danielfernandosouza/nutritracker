@@ -23,7 +23,12 @@ export async function POST(request: NextRequest) {
       type: "public-key" as const,
     })),
     authenticatorSelection: {
-      residentKey: "required",
+      // "preferred" em vez de "required": o app sempre manda o e-mail primeiro em
+      // login-options, então nunca precisou de credencial descobrível (resident/passkey). Uma
+      // resident key costuma ser tratada pelo Android como passkey sincronizada pelo Google
+      // Password Manager, que abre a própria tela de seleção/PIN em vez do sensor de digital
+      // direto — "preferred" tende a manter a credencial como uma chave simples do aparelho.
+      residentKey: "preferred",
       userVerification: "required",
       authenticatorAttachment: "platform",
     },
