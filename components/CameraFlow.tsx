@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { X, Sparkles, FlaskConical, ImageIcon, Plus, Check } from "lucide-react";
 import { toDateKey } from "@/lib/date";
 import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
 import { EMPTY_TOTALS } from "@/lib/targets";
 import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
 import { useCameraStream, type CameraShot } from "@/lib/useCameraStream";
+import { downscaleImageFile } from "@/lib/image";
 
 type Stage = "idle" | "review" | "scanning" | "result" | "error";
 
@@ -68,6 +70,9 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   const [meal, setMeal] = useState<MealInput>(EMPTY_MEAL_INPUT);
   const [note, setNote] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
   useLockBodyScroll(open);
@@ -80,6 +85,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     setResultPhoto(null);
     setMeal(EMPTY_MEAL_INPUT);
     setNote("");
+    setSaveError(null);
   }
 
   function handleCloseAll() {
@@ -159,24 +165,40 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     e.target.value = "";
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const [prefix, data] = result.split(",");
-      const mediaType = prefix.match(/data:(.*);base64/)?.[1] ?? "image/jpeg";
-      addPhoto({ dataUrl: result, data, mediaType: mediaType as "image/jpeg" });
-    };
-    reader.readAsDataURL(file);
+    // Foto vinda da galeria/arquivo precisa passar pelo mesmo redimensionamento da captura ao vivo:
+    // uma imagem original de celular vira um base64 acima do limite aceito pela API de refeições.
+    downscaleImageFile(file)
+      .then(addPhoto)
+      .catch(() => {
+        setErrorMessage("Não consegui ler essa imagem. Tente outra foto.");
+        setStage("error");
+      });
   }
 
   async function handleConfirm() {
-    await fetch("/api/meals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: toDateKey(new Date()), ...meal, photo: resultPhoto }),
-    });
-    window.dispatchEvent(new Event("nutritracker:meal-saved"));
-    handleCloseAll();
+    // Só fecha depois de confirmar a gravação. Antes, uma falha aqui (foto acima do limite, sem
+    // conexão) fechava a câmera como se a refeição tivesse sido registrada, e ela nunca existia.
+    setSaving(true);
+    try {
+      const res = await fetch("/api/meals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: toDateKey(new Date()), ...meal, photo: resultPhoto }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setSaveError(json?.error ?? "Não consegui salvar a refeição. Tente de novo.");
+        return;
+      }
+      window.dispatchEvent(new Event("nutritracker:meal-saved"));
+      // Invalida o cache do roteador para Home/Histórico não voltarem sem esta refeição.
+      router.refresh();
+      handleCloseAll();
+    } catch {
+      setSaveError("Não consegui conectar. Verifique sua internet e tente de novo.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -422,10 +444,12 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
 
           <button
             onClick={handleConfirm}
-            className="font-display mt-5 w-full rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C]"
+            disabled={saving}
+            className="font-display mt-5 w-full rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C] disabled:opacity-60"
           >
-            Adicionar à refeição
+            {saving ? "Salvando..." : "Adicionar à refeição"}
           </button>
+          {saveError && <p className="mt-3 text-center text-[13px] font-semibold text-sodium">{saveError}</p>}
         </div>
       )}
     </div>

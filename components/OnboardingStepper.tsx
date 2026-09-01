@@ -235,6 +235,7 @@ export function OnboardingStepper() {
         }),
       });
       if (!res.ok) throw new Error("save failed");
+      router.refresh();
       router.push("/home");
     } catch {
       setSaving(false);

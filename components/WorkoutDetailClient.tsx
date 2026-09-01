@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Pencil, Repeat2, Trash2, Plus, Info, Flame, CheckCircle2, Watch, Timer, ArrowUpDown, ChevronUp, ChevronDown, Check } from "lucide-react";
 import type { Workout, Exercise } from "@/lib/workouts";
@@ -57,6 +58,7 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
   const [trackerLastWeight, setTrackerLastWeight] = useState<number | null>(null);
   const [thisWorkoutLoggedToday, setThisWorkoutLoggedToday] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const router = useRouter();
   useLockBodyScroll(removeIndex !== null);
 
   async function refreshWorkoutLog() {
@@ -128,6 +130,9 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
         body: JSON.stringify({ date: toDateKey(new Date()), workoutName: name, planDayId: workout.id }),
       });
       await refreshWorkoutLog();
+      // Invalida o cache do roteador: a lista de Treinos (selo "Feito") e a Home (streak, calorias
+      // queimadas) são renderizadas no servidor e mostrariam o estado anterior sem isto.
+      router.refresh();
     } finally {
       setLogging(false);
     }
@@ -481,7 +486,14 @@ export function WorkoutDetailClient({ workout }: { workout: Workout }) {
         </p>
       )}
 
-      <WorkoutScanFlow open={scanOpen} onClose={() => setScanOpen(false)} onSaved={refreshWorkoutLog} />
+      <WorkoutScanFlow
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onSaved={() => {
+          refreshWorkoutLog();
+          router.refresh();
+        }}
+      />
 
       <RestSettingsSheet
         open={restSettingsOpen}

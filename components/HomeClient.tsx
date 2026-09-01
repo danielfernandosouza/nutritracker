@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MessageCircle, Plus } from "lucide-react";
 import { MacroRows } from "@/components/MacroRows";
 import { MealList } from "@/components/MealList";
@@ -43,6 +44,7 @@ export type HomeInitialData = {
 };
 
 export function HomeClient({ initial }: { initial: HomeInitialData }) {
+  const router = useRouter();
   const [meals, setMeals] = useState<Meal[]>(initial.meals);
   const [weekMeals, setWeekMeals] = useState<Meal[]>(initial.weekMeals);
   const [weightEntries, setWeightEntries] = useState<{ date: string; weightKg: number }[]>(initial.weightEntries);
@@ -54,6 +56,8 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [savingMeal, setSavingMeal] = useState(false);
+  const [mealSaveError, setMealSaveError] = useState<string | null>(null);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [weightSheetOpen, setWeightSheetOpen] = useState(false);
@@ -142,6 +146,16 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
     }
   }
 
+  /**
+   * Depois de gravar qualquer coisa: recarrega o estado local (para a tela responder na hora) e
+   * invalida o cache do roteador. Sem o refresh, com o cache de 30s ligado (next.config.ts), voltar
+   * para esta tela — ou ir para Histórico/Treinos — mostraria o dado de antes da alteração.
+   */
+  async function reloadAfterMutation() {
+    await loadAll();
+    router.refresh();
+  }
+
   useEffect(() => {
     // Dados iniciais já vêm prontos do servidor (ver app/(app)/home/page.tsx) — só precisa
     // recarregar quando algo muda (evento disparado pelo CameraFlow após escanear refeição).
@@ -163,37 +177,55 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   );
 
   async function handleSave(input: MealInput) {
-    if (editingMeal) {
-      await fetch("/api/meals", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingMeal.id, ...input }),
-      });
-    } else {
-      await fetch("/api/meals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: dateKey, ...input }),
-      });
+    // A sheet só fecha depois que a gravação confirma. Antes, qualquer falha (foto grande demais,
+    // sem conexão, sessão expirada) fechava o formulário como se tivesse salvo — e a refeição
+    // simplesmente sumia, sem o usuário entender por quê.
+    setSavingMeal(true);
+    setMealSaveError(null);
+    try {
+      const res = editingMeal
+        ? await fetch("/api/meals", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editingMeal.id, ...input }),
+          })
+        : await fetch("/api/meals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: dateKey, ...input }),
+          });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setMealSaveError(json?.error ?? "Não consegui salvar. Tente de novo.");
+        return;
+      }
+
+      setFormOpen(false);
+      setEditingMeal(null);
+      await reloadAfterMutation();
+    } catch {
+      setMealSaveError("Não consegui conectar. Verifique sua internet e tente de novo.");
+    } finally {
+      setSavingMeal(false);
     }
-    setFormOpen(false);
-    setEditingMeal(null);
-    await loadAll();
   }
 
   function openEdit(meal: Meal) {
     setEditingMeal(meal);
+    setMealSaveError(null);
     setFormOpen(true);
   }
 
   function openCreate() {
     setEditingMeal(null);
+    setMealSaveError(null);
     setFormOpen(true);
   }
 
   async function handleDelete(id: string) {
     await fetch(`/api/meals?id=${id}`, { method: "DELETE" });
-    await loadAll();
+    await reloadAfterMutation();
   }
 
   async function handleLogWeight(weightKg: number) {
@@ -203,16 +235,24 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
       body: JSON.stringify({ date: dateKey, weightKg }),
     });
     setWeightSheetOpen(false);
-    await loadAll();
+    await reloadAfterMutation();
   }
 
   async function handleAddWater(amountMl: number) {
     setWaterTotalMl((t) => t + amountMl);
-    await fetch("/api/water", {
+    const res = await fetch("/api/water", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date: dateKey, amountMl }),
-    });
+    }).catch(() => null);
+
+    // Desfaz o incremento otimista se a gravação não foi aceita — senão a tela mostraria uma água
+    // que o servidor não registrou, e ela "sumiria" sozinha na próxima vez que a Home carregasse.
+    if (!res?.ok) {
+      setWaterTotalMl((t) => Math.max(0, t - amountMl));
+      return;
+    }
+    router.refresh();
   }
 
   async function handleSaveSleep(bedTime: string, wakeTime: string) {
@@ -222,7 +262,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
       body: JSON.stringify({ date: dateKey, bedTime, wakeTime }),
     });
     setSleepSheetOpen(false);
-    await loadAll();
+    await reloadAfterMutation();
   }
 
   const baselineBurnKcal = tdee ? estimateBaselineBurnKcal(tdee, today) : 0;
@@ -330,9 +370,12 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
       <MealFormSheet
         open={formOpen}
         initial={editingMeal}
+        error={mealSaveError}
+        saving={savingMeal}
         onClose={() => {
           setFormOpen(false);
           setEditingMeal(null);
+          setMealSaveError(null);
         }}
         onSave={handleSave}
       />

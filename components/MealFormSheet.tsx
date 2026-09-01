@@ -38,11 +38,16 @@ export function MealFormSheet({
   initial,
   onClose,
   onSave,
+  error,
+  saving,
 }: {
   open: boolean;
   initial: MealInput | null;
   onClose: () => void;
   onSave: (input: MealInput) => void;
+  /** Mensagem de falha ao salvar — mantém a sheet aberta para o usuário não perder o que digitou. */
+  error?: string | null;
+  saving?: boolean;
 }) {
   const [form, setForm] = useState<Record<Exclude<keyof MealInput, "items" | "explanation" | "photo">, string>>({
     name: "",
@@ -150,12 +155,21 @@ export function MealFormSheet({
           <Field label="Sódio (mg)" value={form.sodium} onChange={(v) => set("sodium", v)} />
         </div>
         <Field label="Açúcar (g)" value={form.sugar} onChange={(v) => set("sugar", v)} />
+        {error && <p className="mt-2 text-center text-[13px] font-semibold text-sodium">{error}</p>}
         <div className="mt-2 flex gap-2.5">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-line py-3 text-sm font-bold text-dim">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 rounded-xl border border-line py-3 text-sm font-bold text-dim disabled:opacity-60"
+          >
             Cancelar
           </button>
-          <button onClick={handleSave} className="font-display flex-1 rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C]">
-            Salvar
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="font-display flex-1 rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C] disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar"}
           </button>
         </div>
       </div>
