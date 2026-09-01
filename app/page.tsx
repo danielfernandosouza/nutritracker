@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 
 export default async function OnboardingPage() {
-  // O PWA abre por aqui (start_url em app/manifest.ts) toda vez que o app é aberto pelo ícone —
-  // sem isso, quem já está logado via uma sessão válida de 60 dias (ver auth.config.ts) tinha que
-  // tocar "Entrar" de novo a cada abertura só pra ser mandado direto pra Home no passo seguinte.
+  // O PWA abre por aqui (start_url em app/manifest.ts) toda vez que o app é aberto pelo ícone.
+  // Com sessão já existente, pula direto pro /login — que agora funciona como a tela de
+  // reautenticação (biometria ou senha) exigida a cada abertura, não como um formulário de
+  // primeiro acesso (ver lib/session-lock.ts e middleware.ts).
   const session = await auth();
-  if (session?.user) redirect("/home");
+  if (session?.user) redirect("/login");
 
   return (
     <div

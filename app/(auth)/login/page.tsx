@@ -1,15 +1,18 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { UNLOCK_COOKIE_NAME } from "@/lib/session-lock";
 import { LoginForm } from "@/components/LoginForm";
 
 export default async function LoginPage() {
-  // Voltar pelo histórico do navegador (ex: várias telas atrás, com um modal aberto que não
-  // capturou o gesto) pode pousar aqui mesmo com a sessão ainda válida — sem isso, o usuário via
-  // a tela de login e parecia ter sido deslogado, quando na verdade a sessão nunca caiu. Checar no
-  // servidor, antes de renderizar qualquer coisa, evita a corrida que existia com o auto-login por
-  // biometria quando isso era feito num useEffect no cliente (ver histórico do commit 690e431).
-  const session = await auth();
-  if (session?.user) redirect("/home");
+  // Sessão válida sozinha não basta mais pra pular esta tela (ver middleware.ts) — só pula se o
+  // cookie de "destravado" também estiver presente, cobrindo o caso de voltar pelo histórico do
+  // navegador enquanto ainda destravado nesta abertura do app. Checagem no servidor: sem flash do
+  // formulário, sem depender de nenhum modal capturar o gesto de voltar.
+  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+  if (session?.user && cookieStore.get(UNLOCK_COOKIE_NAME)) {
+    redirect("/home");
+  }
 
   return <LoginForm />;
 }

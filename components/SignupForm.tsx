@@ -5,7 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { browserSupportsWebAuthn } from "@simplewebauthn/browser";
+import { BIOMETRIC_EMAIL_KEY, REMEMBERED_EMAIL_KEY } from "@/lib/biometric-storage";
+import { markUnlocked } from "@/lib/session-lock";
 import { PasswordInput } from "@/components/PasswordInput";
+import { BiometricEnrollPrompt } from "@/components/BiometricEnrollPrompt";
 
 export function SignupForm() {
   const router = useRouter();
@@ -16,6 +20,13 @@ export function SignupForm() {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enrollPromptFor, setEnrollPromptFor] = useState<{ email: string; name: string | null } | null>(null);
+
+  function finishSignup() {
+    markUnlocked();
+    router.push("/setup");
+    router.refresh();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,8 +58,13 @@ export function SignupForm() {
         setLoading(false);
         return;
       }
-      router.push("/setup");
-      router.refresh();
+      localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+      setLoading(false);
+      if (browserSupportsWebAuthn() && localStorage.getItem(BIOMETRIC_EMAIL_KEY) !== email) {
+        setEnrollPromptFor({ email, name });
+        return;
+      }
+      finishSignup();
     } catch {
       setError("Não consegui conectar. Tente novamente.");
       setLoading(false);
@@ -130,6 +146,17 @@ export function SignupForm() {
           Entrar
         </Link>
       </div>
+
+      {enrollPromptFor && (
+        <BiometricEnrollPrompt
+          email={enrollPromptFor.email}
+          name={enrollPromptFor.name}
+          onDone={() => {
+            setEnrollPromptFor(null);
+            finishSignup();
+          }}
+        />
+      )}
     </div>
   );
 }

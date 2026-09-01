@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Fingerprint } from "lucide-react";
 import { startAuthentication, browserSupportsWebAuthn } from "@simplewebauthn/browser";
-import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_NAME_KEY } from "@/lib/biometric-storage";
+import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_NAME_KEY, REMEMBERED_EMAIL_KEY } from "@/lib/biometric-storage";
+import { markUnlocked } from "@/lib/session-lock";
 import { PasswordInput } from "@/components/PasswordInput";
+import { BiometricEnrollPrompt } from "@/components/BiometricEnrollPrompt";
 
 export function LoginForm() {
   const router = useRouter();
@@ -20,18 +22,34 @@ export function LoginForm() {
   const [biometricName, setBiometricName] = useState<string | null>(null);
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [greetingDismissed, setGreetingDismissed] = useState(false);
+  const [webauthnSupported, setWebauthnSupported] = useState(false);
+  const [enrollPromptFor, setEnrollPromptFor] = useState<{ email: string; name: string | null } | null>(null);
   const autoTriedRef = useRef(false);
 
   useEffect(() => {
     // One-time browser/localStorage read — no SSR-safe way to compute this during render.
-    if (browserSupportsWebAuthn()) {
+    const supported = browserSupportsWebAuthn();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWebauthnSupported(supported);
+    if (supported) {
       const storedEmail = localStorage.getItem(BIOMETRIC_EMAIL_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBiometricEmail(storedEmail);
       setBiometricName(localStorage.getItem(BIOMETRIC_NAME_KEY));
-      if (storedEmail) setEmail(storedEmail);
+      if (storedEmail) {
+        setEmail(storedEmail);
+        return;
+      }
     }
+    // Sem biometria neste dispositivo: só o e-mail é lembrado, a senha é sempre exigida.
+    const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (rememberedEmail) setEmail(rememberedEmail);
   }, []);
+
+  function finishLogin() {
+    markUnlocked();
+    router.push("/home");
+    router.refresh();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,8 +62,15 @@ export function LoginForm() {
         setLoading(false);
         return;
       }
-      router.push("/home");
-      router.refresh();
+      localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+      setLoading(false);
+      // Oferece ativar biometria só quando faz sentido: suportado neste navegador e ainda não
+      // ativado para essa conta neste aparelho. Senão, seria oferecido de novo a cada login.
+      if (webauthnSupported && localStorage.getItem(BIOMETRIC_EMAIL_KEY) !== email) {
+        setEnrollPromptFor({ email, name: null });
+        return;
+      }
+      finishLogin();
     } catch {
       setError("Não consegui conectar. Tente novamente.");
       setLoading(false);
@@ -82,8 +107,7 @@ export function LoginForm() {
         setError("Não consegui confirmar a biometria. Tente com sua senha.");
         return;
       }
-      router.push("/home");
-      router.refresh();
+      finishLogin();
     } catch {
       setBiometricBusy(false);
       setGreetingDismissed(true);
@@ -195,6 +219,17 @@ export function LoginForm() {
           Criar conta
         </Link>
       </div>
+
+      {enrollPromptFor && (
+        <BiometricEnrollPrompt
+          email={enrollPromptFor.email}
+          name={enrollPromptFor.name}
+          onDone={() => {
+            setEnrollPromptFor(null);
+            finishLogin();
+          }}
+        />
+      )}
     </div>
   );
 }

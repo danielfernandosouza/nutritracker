@@ -3,3 +3,6 @@ export const BIOMETRIC_EMAIL_KEY = "nutritracker:biometric-email";
 
 /** Primeiro nome do usuário com biometria ativada nesse dispositivo — usado na saudação da tela de login. */
 export const BIOMETRIC_NAME_KEY = "nutritracker:biometric-name";
+
+/** E-mail do último login por senha (sem biometria ativada) — só poupa digitar o e-mail de novo, a senha é sempre exigida. */
+export const REMEMBERED_EMAIL_KEY = "nutritracker:remembered-email";
