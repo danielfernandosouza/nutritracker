@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Footprints, X, Check, Pencil, Trash2, Flame } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/hooks/useLockBodyScroll";
-import { classifyCardioIntensity, type CardioActivity, type CardioIntensity } from "@/lib/cardio-burn";
+import { classifyCardioIntensity, CARDIO_ACTIVITY_COLORS, type CardioActivity, type CardioIntensity } from "@/lib/cardio-burn";
 import { formatDateLabel } from "@/lib/date";
 
 type CardioSession = {
@@ -103,6 +103,7 @@ export function CardioSessionSheet({ session, onClose }: { session: CardioSessio
   }
 
   const d = new Date(`${session.date}T00:00:00`);
+  const activityColor = CARDIO_ACTIVITY_COLORS[(session.cardioActivity as CardioActivity) || "RUN"];
 
   return (
     <div
@@ -124,15 +125,16 @@ export function CardioSessionSheet({ session, onClose }: { session: CardioSessio
             <div className="mb-4 flex gap-2">
               {(["RUN", "WALK"] as CardioActivity[]).map((key) => {
                 const active = activity === key;
+                const color = CARDIO_ACTIVITY_COLORS[key];
                 return (
                   <button
                     key={key}
                     onClick={() => setActivity(key)}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border px-4 py-3 text-sm font-semibold"
                     style={{
-                      borderColor: active ? "var(--accent)" : "var(--line)",
-                      background: active ? "rgba(198,255,61,0.08)" : "var(--track)",
-                      color: active ? "var(--accent)" : "var(--chalk)",
+                      borderColor: active ? color : "var(--line)",
+                      background: active ? `color-mix(in srgb, ${color} 12%, var(--track))` : "var(--track)",
+                      color: active ? color : "var(--chalk)",
                     }}
                   >
                     {active && <Check size={14} strokeWidth={2.6} />}
@@ -191,48 +193,56 @@ export function CardioSessionSheet({ session, onClose }: { session: CardioSessio
           </>
         ) : (
           <>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(198,255,61,0.14)" }}>
-                <Footprints size={18} strokeWidth={2.2} color="var(--accent)" />
+            <div
+              className="mb-5 rounded-3xl p-5"
+              style={{ background: `linear-gradient(135deg, ${activityColor}, color-mix(in srgb, ${activityColor} 55%, #0B0B0C))` }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "rgba(11,11,12,0.6)" }}>
+                    {formatDateLabel(d)}
+                  </div>
+                  <div className="text-[13px] font-bold" style={{ color: "#0B0B0C" }}>
+                    {ACTIVITY_LABELS[session.cardioActivity ?? "RUN"]}
+                  </div>
+                </div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(11,11,12,0.18)" }}>
+                  <Footprints size={18} strokeWidth={2.4} color="#0B0B0C" />
+                </div>
               </div>
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wide text-dim">{formatDateLabel(d)}</div>
-                <div className="font-display text-[17px] font-bold">{ACTIVITY_LABELS[session.cardioActivity ?? "RUN"]}</div>
+              <div className="font-display mt-3 text-[40px] font-bold leading-none" style={{ color: "#0B0B0C" }}>
+                {session.distanceKm ? `${session.distanceKm.toFixed(2)} km` : "—"}
               </div>
             </div>
 
             <div className="mb-5 grid grid-cols-2 gap-2.5">
-              <div className="rounded-2xl border border-line bg-track px-4 py-3">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-dim">Distância</div>
-                <div className="font-display mt-0.5 text-base font-bold">{session.distanceKm ? `${session.distanceKm.toFixed(1)} km` : "—"}</div>
-              </div>
-              <div className="rounded-2xl border border-line bg-track px-4 py-3">
+              <div className="rounded-2xl border border-line bg-track px-4 py-3.5">
                 <div className="text-[11px] font-bold uppercase tracking-wide text-dim">Duração</div>
-                <div className="font-display mt-0.5 text-base font-bold">{session.durationMinutes ? `${Math.round(session.durationMinutes)} min` : "—"}</div>
+                <div className="font-display mt-0.5 text-xl font-bold">{session.durationMinutes ? `${Math.round(session.durationMinutes)} min` : "—"}</div>
               </div>
-              <div className="rounded-2xl border border-line bg-track px-4 py-3">
+              <div className="rounded-2xl border border-line bg-track px-4 py-3.5">
                 <div className="text-[11px] font-bold uppercase tracking-wide text-dim">Ritmo</div>
-                <div className="font-display mt-0.5 text-base font-bold">{formatPace(session.paceMinPerKm)}</div>
+                <div className="font-display mt-0.5 text-xl font-bold">{formatPace(session.paceMinPerKm)}</div>
               </div>
-              <div className="rounded-2xl border border-line bg-track px-4 py-3">
+              <div className="rounded-2xl border border-line bg-track px-4 py-3.5">
                 <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-dim">
                   <Flame size={11} strokeWidth={2.4} />
                   Calorias
                 </div>
-                <div className="font-display mt-0.5 text-base font-bold">
-                  {session.caloriesBurned ? `~${Math.round(session.caloriesBurned)} kcal` : "—"}
+                <div className="font-display mt-0.5 text-xl font-bold">
+                  {session.caloriesBurned ? `~${Math.round(session.caloriesBurned)}` : "—"}
+                  <span className="text-xs text-dim"> kcal</span>
                 </div>
               </div>
+              {intensity && (
+                <div className="rounded-2xl border px-4 py-3.5" style={{ borderColor: INTENSITY_COLORS[intensity] }}>
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-dim">Intensidade</div>
+                  <div className="font-display mt-0.5 text-xl font-bold" style={{ color: INTENSITY_COLORS[intensity] }}>
+                    {INTENSITY_LABELS[intensity]}
+                  </div>
+                </div>
+              )}
             </div>
-
-            {intensity && (
-              <div className="mb-5 flex items-center justify-between rounded-2xl border border-line px-4 py-3" style={{ borderColor: INTENSITY_COLORS[intensity] }}>
-                <span className="text-[12px] font-semibold text-dim">Intensidade</span>
-                <span className="text-sm font-bold" style={{ color: INTENSITY_COLORS[intensity] }}>
-                  {INTENSITY_LABELS[intensity]}
-                </span>
-              </div>
-            )}
 
             {session.routePolyline && (
               <div className="mb-5 rounded-2xl border border-line bg-track p-4 text-center text-[12px] text-dim">

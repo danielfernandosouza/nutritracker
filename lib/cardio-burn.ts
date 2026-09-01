@@ -1,6 +1,13 @@
 export type CardioActivity = "RUN" | "WALK" | "HIKE";
 export type CardioIntensity = "leve" | "moderada" | "intensa";
 
+/** Reaproveita os tokens de cor de macro já existentes (app/globals.css) como cor por atividade. */
+export const CARDIO_ACTIVITY_COLORS: Record<CardioActivity, string> = {
+  RUN: "var(--protein)",
+  WALK: "var(--fat)",
+  HIKE: "var(--carb)",
+};
+
 /**
  * MET aproximados do Compendium of Physical Activities, por faixa de ritmo — a mesma faixa
  * também classifica a intensidade, então as duas coisas ficam sempre consistentes entre si.
