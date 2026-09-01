@@ -88,7 +88,7 @@ export function DaySummaryModal({
             <div className="flex flex-col gap-2">
               {meals.map((meal) => (
                 <div key={meal.id} className="flex items-center gap-3 rounded-2xl border border-line bg-track px-3.5 py-3">
-                  <MealIcon photo={meal.photo} emoji={meal.emoji} size={40} rounded="rounded-lg" />
+                  <MealIcon photo={meal.photo} emoji={meal.emoji} size={40} rounded="rounded-lg" healthScore={meal.healthScore} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-semibold">{meal.name}</div>
                     <div className="mt-0.5 text-[11px] text-dim">

@@ -135,7 +135,7 @@ export function HistoryDayList({
             <div className="flex flex-col gap-2">
               {day.meals.map((meal) => (
                 <div key={meal.id} className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-3.5 py-2.5">
-                  <MealIcon photo={meal.photo} emoji={meal.emoji} size={34} rounded="rounded-lg" />
+                  <MealIcon photo={meal.photo} emoji={meal.emoji} size={34} rounded="rounded-lg" healthScore={meal.healthScore} />
                   <div className="min-w-0 flex-1 truncate text-[13px] font-medium">{meal.name}</div>
                   <div className="num min-w-[44px] text-right text-[13px] font-bold">{Math.round(meal.calories)}</div>
                 </div>

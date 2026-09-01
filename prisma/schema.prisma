@@ -84,6 +84,10 @@ model Meal {
   sugar     Float    @default(0)
   emoji     String   @default("🍽️")
   photo     String?
+  // Nota de 1 a 10 do quão saudável é o prato, dada pela IA na análise. Opcional: refeições
+  // registradas à mão (e todas as anteriores a este recurso) não têm nota.
+  healthScore Float?
+  healthScoreReason String?
   createdAt DateTime @default(now())
 
   @@index([userId, date])

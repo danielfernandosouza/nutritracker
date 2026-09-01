@@ -3,6 +3,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isPhotoTooLarge } from "@/lib/photo";
 
+/** A nota vem da IA, então é tratada como entrada não confiável: fora de 1-10 vira ausência de nota. */
+function clampScore(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 10) return null;
+  return Math.round(n * 10) / 10;
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -28,7 +35,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { date, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo } = body;
+  const { date, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo, healthScore, healthScoreReason } = body;
 
   if (!date || !name) {
     return NextResponse.json({ error: "date and name are required" }, { status: 400 });
@@ -50,6 +57,8 @@ export async function POST(request: NextRequest) {
       sugar: Number(sugar) || 0,
       emoji: emoji || "🍽️",
       photo: photo || null,
+      healthScore: clampScore(healthScore),
+      healthScoreReason: healthScoreReason || null,
     },
   });
 
@@ -61,7 +70,7 @@ export async function PUT(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { id, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo } = body;
+  const { id, name, calories, protein, carbs, fat, sodium, sugar, emoji, photo, healthScore, healthScoreReason } = body;
 
   if (!id || !name) {
     return NextResponse.json({ error: "id and name are required" }, { status: 400 });
@@ -82,6 +91,10 @@ export async function PUT(request: NextRequest) {
       sugar: Number(sugar) || 0,
       emoji: emoji || "🍽️",
       photo: photo === undefined ? undefined : photo || null,
+      // Omitido no corpo = mantém a nota que a IA já tinha dado. Editar as gramas à mão não
+      // deveria apagar a avaliação do prato, que é sobre a composição dele.
+      healthScore: healthScore === undefined ? undefined : clampScore(healthScore),
+      healthScoreReason: healthScoreReason === undefined ? undefined : healthScoreReason || null,
     },
   });
 

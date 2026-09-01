@@ -32,7 +32,7 @@ export function MealList({
                 onClick={() => onEdit(meal)}
                 className="flex items-center gap-3 rounded-2xl border border-line bg-panel p-3 text-left active:opacity-80"
               >
-                <MealIcon photo={meal.photo} emoji={meal.emoji} size={48} />
+                <MealIcon photo={meal.photo} emoji={meal.emoji} size={48} healthScore={meal.healthScore} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{meal.name}</div>
                   <div className="mt-0.5 truncate text-xs text-dim">

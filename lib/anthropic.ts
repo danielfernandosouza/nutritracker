@@ -45,8 +45,37 @@ export const MEAL_ESTIMATE_TOOL: Anthropic.Tool = {
         type: "string",
         description: "Explicação curta (1-2 frases) de como a estimativa foi feita, em português, para o usuário entender o raciocínio.",
       },
+      healthScore: {
+        type: "number",
+        description:
+          "Nota de 1 a 10 para o quão saudável é esta refeição, aceitando meio ponto (ex: 7.5). Use a escala inteira e ancore assim: " +
+          "1-3 = ultraprocessados, frituras, doces e refrigerantes, quase sem valor nutricional; " +
+          "4-5 = refeição comum desequilibrada, ex: muito carboidrato refinado com pouca proteína ou nenhum vegetal; " +
+          "6-7 = razoável, com algum equilíbrio mas com ressalvas, ex: prato completo porém frito ou sem vegetais; " +
+          "8-9 = equilibrada, com proteína magra, vegetais e carboidrato de qualidade; " +
+          "10 = exemplar em composição e qualidade dos ingredientes. " +
+          "Julgue a composição do prato, não o tamanho da porção.",
+      },
+      healthScoreReason: {
+        type: "string",
+        description:
+          "Frase curta (no máximo 12 palavras), em português, dizendo o motivo principal da nota — o que puxou pra cima ou pra baixo. Ex: 'Boa proteína, mas faltam vegetais'.",
+      },
     },
-    required: ["name", "emoji", "calories", "protein", "carbs", "fat", "sodium", "sugar", "items", "explanation"],
+    required: [
+      "name",
+      "emoji",
+      "calories",
+      "protein",
+      "carbs",
+      "fat",
+      "sodium",
+      "sugar",
+      "items",
+      "explanation",
+      "healthScore",
+      "healthScoreReason",
+    ],
     additionalProperties: false,
   },
   strict: true,

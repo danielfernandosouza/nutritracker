@@ -9,6 +9,7 @@ import { EMPTY_TOTALS } from "@/lib/targets";
 import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
 import { useCameraStream, type CameraShot } from "@/lib/useCameraStream";
 import { downscaleImageFile } from "@/lib/image";
+import { HealthScoreMedal, medalTierForScore, medalTierLabel } from "@/components/HealthScoreMedal";
 
 type Stage = "idle" | "review" | "scanning" | "result" | "error";
 
@@ -382,6 +383,18 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
             <span className="h-2 w-2 rounded-full bg-accent" />
             <span className="text-xs font-semibold text-accent">Identificado automaticamente — edite se precisar</span>
           </div>
+
+          {meal.healthScore != null && (
+            <div className="mb-4 flex items-center gap-3.5 rounded-2xl border border-line bg-panel p-4">
+              <HealthScoreMedal score={meal.healthScore} />
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-[15px] font-bold">
+                  Medalha de {medalTierLabel(medalTierForScore(meal.healthScore))}
+                </div>
+                {meal.healthScoreReason && <p className="mt-0.5 text-[12px] leading-snug text-dim">{meal.healthScoreReason}</p>}
+              </div>
+            </div>
+          )}
 
           <label className="mb-1.5 block text-xs text-dim">Nome do prato</label>
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-panel px-3">

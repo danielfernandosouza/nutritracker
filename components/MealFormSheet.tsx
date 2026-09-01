@@ -49,7 +49,9 @@ export function MealFormSheet({
   error?: string | null;
   saving?: boolean;
 }) {
-  const [form, setForm] = useState<Record<Exclude<keyof MealInput, "items" | "explanation" | "photo">, string>>({
+  const [form, setForm] = useState<
+    Record<Exclude<keyof MealInput, "items" | "explanation" | "photo" | "healthScore" | "healthScoreReason">, string>
+  >({
     name: "",
     emoji: "🍽️",
     calories: "",

@@ -10,6 +10,9 @@ export type Meal = {
   sugar: number;
   emoji: string;
   photo: string | null;
+  /** Nota de 1 a 10 do quão saudável é o prato. Ausente em refeições registradas à mão. */
+  healthScore: number | null;
+  healthScoreReason: string | null;
   createdAt: string;
 };
 
@@ -29,6 +32,8 @@ export type MealInput = {
   sugar: number;
   emoji: string;
   photo?: string | null;
+  healthScore?: number | null;
+  healthScoreReason?: string | null;
   /** Transient — not persisted, only used to explain the estimate on the scan-result screen. */
   items?: MealItem[];
   explanation?: string;
