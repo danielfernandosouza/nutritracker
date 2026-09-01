@@ -9,6 +9,10 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // O Prisma Migrate precisa de uma conexão direta (sem pooler) para os advisory locks que usa
+    // — o pooler do Neon roda em modo transaction do PgBouncer, que não suporta isso. DIRECT_URL
+    // é usada só aqui (geração/migrations via CLI); o app em runtime usa DATABASE_URL (pooled) via
+    // o adapter em lib/db.ts, que não depende deste arquivo.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
