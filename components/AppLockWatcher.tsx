@@ -15,8 +15,11 @@ export function AppLockWatcher() {
 
   useEffect(() => {
     function lock() {
+      // Guarda onde o usuário estava para devolvê-lo ao mesmo lugar depois da biometria, em vez
+      // de largá-lo na Home (ver safeNextPath em LoginForm).
+      const here = window.location.pathname + window.location.search;
       clearUnlock();
-      router.replace("/login");
+      router.replace(`/login?next=${encodeURIComponent(here)}`);
     }
 
     // Reabertura do app: o componente monta de novo e o carimbo ainda é o de quando saiu.

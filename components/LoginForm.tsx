@@ -45,9 +45,27 @@ export function LoginForm() {
     if (rememberedEmail) setEmail(rememberedEmail);
   }, []);
 
+  /**
+   * Para onde ir depois de autenticar. Quando a trava por inatividade manda o usuário pra cá
+   * (ver AppLockWatcher), ela guarda a tela em que ele estava em `?next=` — assim a biometria o
+   * devolve ao mesmo lugar. Só caminhos internos são aceitos: um valor externo viraria um
+   * redirecionamento aberto, e voltar para /login faria laço.
+   */
+  function safeNextPath(): string {
+    try {
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/login")) {
+        return "/home";
+      }
+      return next;
+    } catch {
+      return "/home";
+    }
+  }
+
   function finishLogin() {
     markUnlocked();
-    router.push("/home");
+    router.push(safeNextPath());
     router.refresh();
   }
 
