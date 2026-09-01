@@ -23,12 +23,14 @@ export async function POST(request: NextRequest) {
       type: "public-key" as const,
     })),
     authenticatorSelection: {
-      // "preferred" em vez de "required": o app sempre manda o e-mail primeiro em
-      // login-options, então nunca precisou de credencial descobrível (resident/passkey). Uma
-      // resident key costuma ser tratada pelo Android como passkey sincronizada pelo Google
-      // Password Manager, que abre a própria tela de seleção/PIN em vez do sensor de digital
-      // direto — "preferred" tende a manter a credencial como uma chave simples do aparelho.
-      residentKey: "preferred",
+      // "discouraged" pede uma credencial NÃO descobrível, presa a este aparelho. Gerenciadores de
+      // senha (Proton Pass, Samsung Pass, Google) em geral só armazenam credenciais descobríveis
+      // (as "chaves de acesso"/passkeys sincronizadas), então com "discouraged" o Android tende a
+      // resolver no autenticador do próprio aparelho — a digital, que é o que se espera aqui — em
+      // vez de abrir a tela "escolha onde salvar sua chave de acesso". Podemos abrir mão de
+      // credencial descobrível porque o app sempre manda o e-mail antes (ver login-options, que
+      // preenche allowCredentials), nunca dependendo de login sem usuário.
+      residentKey: "discouraged",
       userVerification: "required",
       authenticatorAttachment: "platform",
     },
