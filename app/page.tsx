@@ -1,7 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  // O PWA abre por aqui (start_url em app/manifest.ts) toda vez que o app é aberto pelo ícone —
+  // sem isso, quem já está logado via uma sessão válida de 60 dias (ver auth.config.ts) tinha que
+  // tocar "Entrar" de novo a cada abertura só pra ser mandado direto pra Home no passo seguinte.
+  const session = await auth();
+  if (session?.user) redirect("/home");
+
   return (
     <div
       className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col justify-between px-7 pb-10 pt-12"
