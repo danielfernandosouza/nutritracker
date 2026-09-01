@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Fingerprint, Check } from "lucide-react";
+import { Fingerprint, Check, X } from "lucide-react";
 import { startRegistration, browserSupportsWebAuthn } from "@simplewebauthn/browser";
 import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_NAME_KEY } from "@/lib/biometric-storage";
 
@@ -49,18 +49,51 @@ export function BiometricSetupButton({ email, name }: { email: string; name?: st
     }
   }
 
+  // Remove no servidor (não só o toggle local) — sem isso, tentar recadastrar falha, porque o
+  // navegador/SO reconhece a credencial antiga e recusa registrar de novo no mesmo autenticador.
+  async function handleDisable() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/webauthn/authenticators", { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      localStorage.removeItem(BIOMETRIC_EMAIL_KEY);
+      localStorage.removeItem(BIOMETRIC_NAME_KEY);
+      setEnabled(false);
+    } catch {
+      setError("Não consegui desativar. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
-      <button
-        onClick={handleEnable}
-        disabled={busy || enabled}
-        className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3.5 text-sm font-medium disabled:opacity-70"
-      >
-        {enabled ? <Check size={16} strokeWidth={2} color="var(--accent)" /> : <Fingerprint size={16} strokeWidth={2} color="var(--dim)" />}
-        <span style={{ color: enabled ? "var(--accent)" : undefined }}>
-          {enabled ? "Login por biometria ativado" : busy ? "Ativando..." : "Ativar login por biometria"}
-        </span>
-      </button>
+      {enabled ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3.5 text-sm font-medium">
+          <Check size={16} strokeWidth={2} color="var(--accent)" />
+          <span className="flex-1" style={{ color: "var(--accent)" }}>
+            Login por biometria ativado
+          </span>
+          <button
+            onClick={handleDisable}
+            disabled={busy}
+            aria-label="Desativar login por biometria"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-track text-dim disabled:opacity-60"
+          >
+            <X size={13} strokeWidth={2.4} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={handleEnable}
+          disabled={busy}
+          className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3.5 text-sm font-medium disabled:opacity-70"
+        >
+          <Fingerprint size={16} strokeWidth={2} color="var(--dim)" />
+          <span>{busy ? "Ativando..." : "Ativar login por biometria"}</span>
+        </button>
+      )}
       {error && <p className="px-1 text-[12px] font-semibold text-sodium">{error}</p>}
     </div>
   );
