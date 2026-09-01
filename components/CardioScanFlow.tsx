@@ -167,15 +167,11 @@ export function CardioScanFlow() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-[18px] border border-line bg-panel px-4.5 py-3.5 text-left"
+        aria-label="Registrar por foto do relógio"
+        className="flex w-[64px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[18px] border border-line bg-panel"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(198,255,61,0.14)" }}>
-          <Watch size={16} strokeWidth={2.2} color="var(--accent)" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-chalk">Foto do relógio</div>
-          <div className="text-[12px] text-dim">Ler do Strava ou relógio</div>
-        </div>
+        <Watch size={18} strokeWidth={2.2} color="var(--accent)" />
+        <span className="text-[10px] font-semibold text-dim">Foto</span>
       </button>
     );
   }
