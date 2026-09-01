@@ -38,7 +38,11 @@ export default async function HomePage() {
     prisma.weightEntry.findMany({ where: { userId, date: { gte: weightHistoryStart } }, orderBy: { date: "asc" } }),
     prisma.workoutLog.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.waterEntry.findMany({ where: { userId, date: dateKey } }),
-    prisma.sleepEntry.findFirst({ where: { userId, date: dateKey } }),
+    // Hoje ou ontem: sono é sempre registrado depois de acordar, então pode ainda não existir um
+    // registro "de hoje" na primeira metade do dia — sem isso, o de ontem ficava inacessível para
+    // edição assim que a data virava (a correção criava um registro novo em vez de consertar o
+    // antigo). orderBy garante que "hoje" vence se os dois existirem.
+    prisma.sleepEntry.findFirst({ where: { userId, date: { in: [dateKey, yesterday] } }, orderBy: { date: "desc" } }),
     prisma.workoutLog.findFirst({ where: { userId, date: yesterday }, select: { id: true } }),
   ]);
 
@@ -86,7 +90,7 @@ export default async function HomePage() {
     waterTotalMl,
     waterTargetMl,
     sleepFeedback,
-    sleepEntry: sleepEntryRaw ? { bedTime: sleepEntryRaw.bedTime, wakeTime: sleepEntryRaw.wakeTime } : null,
+    sleepEntry: sleepEntryRaw ? { id: sleepEntryRaw.id, bedTime: sleepEntryRaw.bedTime, wakeTime: sleepEntryRaw.wakeTime } : null,
   };
 
   return <HomeClient initial={initial} />;

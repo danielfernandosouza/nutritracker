@@ -8,12 +8,15 @@ export function SleepLogSheet({
   open,
   initialBedTime,
   initialWakeTime,
+  editing,
   onClose,
   onSave,
 }: {
   open: boolean;
   initialBedTime: string | null;
   initialWakeTime: string | null;
+  /** Já existe um registro (hoje ou ontem) sendo corrigido, em vez de um novo sendo criado. */
+  editing?: boolean;
   onClose: () => void;
   onSave: (bedTime: string, wakeTime: string) => Promise<void> | void;
 }) {
@@ -51,7 +54,7 @@ export function SleepLogSheet({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Moon size={16} strokeWidth={2} color="var(--accent)" />
-            <h3 className="font-display text-base font-bold">Registrar sono</h3>
+            <h3 className="font-display text-base font-bold">{editing ? "Editar sono" : "Registrar sono"}</h3>
           </div>
           <button onClick={onClose} aria-label="Fechar" className="flex h-8 w-8 items-center justify-center rounded-full bg-track text-dim">
             <X size={14} strokeWidth={2.2} />

@@ -40,8 +40,10 @@ export type HomeInitialData = {
   waterTotalMl: number;
   waterTargetMl: number;
   sleepFeedback: SleepFeedback | null;
-  sleepEntry: { bedTime: string; wakeTime: string } | null;
+  sleepEntry: SleepEntryData | null;
 };
+
+type SleepEntryData = { id: string; bedTime: string; wakeTime: string };
 
 export function HomeClient({ initial }: { initial: HomeInitialData }) {
   const router = useRouter();
@@ -70,7 +72,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   const [waterTotalMl, setWaterTotalMl] = useState(initial.waterTotalMl);
   const [waterTargetMl, setWaterTargetMl] = useState(initial.waterTargetMl);
   const [sleepFeedback, setSleepFeedback] = useState<SleepFeedback | null>(initial.sleepFeedback);
-  const [sleepEntry, setSleepEntry] = useState<{ bedTime: string; wakeTime: string } | null>(initial.sleepEntry);
+  const [sleepEntry, setSleepEntry] = useState<SleepEntryData | null>(initial.sleepEntry);
   const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
   const [openMetric, setOpenMetric] = useState<MetricKey | null>(null);
 
@@ -78,6 +80,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   const dateKey = toDateKey(today);
   const weekStart = lastDateKeys(7, today)[0];
   const weightHistoryStart = lastDateKeys(21, today)[0];
+  const yesterdayKey = lastDateKeys(2, today)[0];
 
   async function loadAll() {
     setLoadError(false);
@@ -91,7 +94,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
         fetch(`/api/weight?from=${weightHistoryStart}`),
         fetch("/api/workout-log"),
         fetch(`/api/water?date=${dateKey}`),
-        fetch(`/api/sleep?date=${dateKey}`),
+        fetch(`/api/sleep?date=${dateKey}&fallbackDate=${yesterdayKey}`),
       ]);
       if (!weekRes.ok) throw new Error("meals request failed");
       const weekJson = await weekRes.json();
@@ -103,8 +106,8 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
       setWaterTotalMl(waterJson.totalMl ?? 0);
       setWaterTargetMl(profileJson.wellness?.waterTargetMl ?? 2000);
       if (sleepJson.entry) {
-        const { bedTime, wakeTime } = sleepJson.entry;
-        setSleepEntry({ bedTime, wakeTime });
+        const { id, bedTime, wakeTime } = sleepJson.entry;
+        setSleepEntry({ id, bedTime, wakeTime });
         setSleepFeedback(
           computeSleepFeedback(bedTime, wakeTime, {
             minHours: profileJson.wellness?.sleepTargetMinHours ?? 7,
@@ -256,11 +259,20 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   }
 
   async function handleSaveSleep(bedTime: string, wakeTime: string) {
-    await fetch("/api/sleep", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: dateKey, bedTime, wakeTime }),
-    });
+    // Com um registro já carregado (de hoje OU de ontem, ver loadAll), edita por id em vez de
+    // upsert por data — assim corrigir o sono de ontem não cria um registro novo pra hoje.
+    const res = sleepEntry
+      ? await fetch("/api/sleep", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: sleepEntry.id, bedTime, wakeTime }),
+        })
+      : await fetch("/api/sleep", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date: dateKey, bedTime, wakeTime }),
+        });
+    if (!res.ok) return;
     setSleepSheetOpen(false);
     await reloadAfterMutation();
   }
@@ -389,6 +401,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
         open={sleepSheetOpen}
         initialBedTime={sleepEntry?.bedTime ?? null}
         initialWakeTime={sleepEntry?.wakeTime ?? null}
+        editing={!!sleepEntry}
         onClose={() => setSleepSheetOpen(false)}
         onSave={handleSaveSleep}
       />
@@ -429,7 +442,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
                 }}
                 className="w-full rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C]"
               >
-                Registrar sono
+                {sleepEntry ? "Editar sono" : "Registrar sono"}
               </button>
             ) : undefined
           }
