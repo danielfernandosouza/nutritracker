@@ -10,6 +10,7 @@ import { computeStreakFromDates } from "@/lib/streak";
 import { lastDateKeys, toDateKey } from "@/lib/date";
 import { LogoutButton } from "@/components/LogoutButton";
 import { BiometricSetupButton } from "@/components/BiometricSetupButton";
+import { SpotifyConnectCard } from "@/components/SpotifyConnectCard";
 import { ProfileGoalsGrid } from "@/components/ProfileGoalsGrid";
 import { WeightSection } from "@/components/WeightSection";
 
@@ -118,6 +119,7 @@ export default async function ProfilePage() {
           Unidades e preferências
         </div>
         {session.user.email && <BiometricSetupButton email={session.user.email} name={session.user.name} />}
+        <SpotifyConnectCard />
         <LogoutButton />
       </div>
     </div>

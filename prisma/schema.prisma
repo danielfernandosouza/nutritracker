@@ -29,6 +29,18 @@ model User {
   exerciseSetLogs ExerciseSetLog[]
   passwordResetTokens PasswordResetToken[]
   stravaAccount StravaAccount?
+  spotifyAccount SpotifyAccount?
+}
+
+model SpotifyAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model PasswordResetToken {
@@ -94,6 +106,10 @@ model Profile {
   equipmentPreference  String?
   favoriteMuscleGroups String[] @default([])
   restWeekdays         Int[]    @default([])
+  // Libera o mini-player do Spotify para esta pessoa. Fica desligado por padrão: o app do Spotify
+  // em modo de desenvolvimento aceita no máximo 5 contas (cadastradas à mão no painel deles), então
+  // o recurso é habilitado pessoa a pessoa em vez de valer para todo mundo.
+  spotifyEnabled       Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

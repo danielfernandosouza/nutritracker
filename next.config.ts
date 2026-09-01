@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    // Capas de álbum vêm da CDN do Spotify. São servidas sem otimização (unoptimized no
+    // componente): já chegam pequenas e mudam a cada música, então otimizar não se pagaria.
+    remotePatterns: [{ protocol: "https", hostname: "i.scdn.co" }],
+  },
   experimental: {
     // Cache do roteador no navegador: páginas dinâmicas já visitadas ficam "quentes" por 30s,
     // então trocar de aba e voltar é instantâneo, sem ida ao servidor. O padrão do Next 15+ é 0
