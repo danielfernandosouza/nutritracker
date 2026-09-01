@@ -263,15 +263,17 @@ async function CardioTab({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="mb-5">
-        <CardioWeekSummary sessions={sessions} />
-      </div>
-
       <div className="mb-5 flex gap-2.5">
         <div className="flex-1">
           <CardioLogSheet />
         </div>
-        <CardioScanFlow />
+        <div className="flex-1">
+          <CardioScanFlow />
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <CardioWeekSummary sessions={sessions} />
       </div>
 
       <CardioSessionList sessions={sessions} />

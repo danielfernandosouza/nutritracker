@@ -1,19 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Dumbbell, Scale, Flame } from "lucide-react";
+import { Dumbbell, Scale, Flame, Footprints } from "lucide-react";
 import { MealIcon } from "@/components/MealIcon";
 import { DaySummaryModal } from "@/components/DaySummaryModal";
 import { toDateKey } from "@/lib/date";
 import { EMPTY_TOTALS, type MealTotals } from "@/lib/targets";
 import { estimateBaselineBurnKcal, classifyEnergyBalance } from "@/lib/calorie-burn";
+import { CARDIO_ACTIVITY_COLORS, type CardioActivity } from "@/lib/cardio-burn";
 import type { Goal } from "@/lib/calculations";
 import type { Meal } from "@/lib/types";
+
+const CARDIO_ACTIVITY_LABELS: Record<string, string> = { RUN: "Corrida", WALK: "Caminhada", HIKE: "Trilha" };
+
+type CardioSession = { cardioActivity: string | null; distanceKm: number | null };
 
 type Day = {
   dateKey: string;
   meals: Meal[];
   hasWorkout: boolean;
+  cardioSessions: CardioSession[];
   caloriesBurnedFromWorkout: number | null;
   weightKg: number | null;
 };
@@ -86,6 +92,21 @@ export function HistoryDayList({
                     treino
                   </span>
                 )}
+                {day.cardioSessions.map((s, i) => {
+                  const activity = (s.cardioActivity as CardioActivity) || "RUN";
+                  const color = CARDIO_ACTIVITY_COLORS[activity];
+                  return (
+                    <span
+                      key={i}
+                      className="flex items-center gap-1 rounded-full bg-track px-2 py-0.5 text-[10px] font-semibold"
+                      style={{ color }}
+                    >
+                      <Footprints size={10} strokeWidth={2.4} />
+                      {CARDIO_ACTIVITY_LABELS[activity]}
+                      {s.distanceKm ? ` ${s.distanceKm.toFixed(1)}km` : ""}
+                    </span>
+                  );
+                })}
                 {day.caloriesBurnedFromWorkout !== null && (
                   <span className="flex items-center gap-1 rounded-full bg-track px-2 py-0.5 text-[10px] font-semibold text-dim">
                     <Flame size={10} strokeWidth={2.4} />
