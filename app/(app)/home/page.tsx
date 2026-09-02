@@ -38,11 +38,12 @@ export default async function HomePage() {
     prisma.weightEntry.findMany({ where: { userId, date: { gte: weightHistoryStart } }, orderBy: { date: "asc" } }),
     prisma.workoutLog.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.waterEntry.findMany({ where: { userId, date: dateKey } }),
-    // Hoje ou ontem: sono é sempre registrado depois de acordar, então pode ainda não existir um
-    // registro "de hoje" na primeira metade do dia — sem isso, o de ontem ficava inacessível para
-    // edição assim que a data virava (a correção criava um registro novo em vez de consertar o
-    // antigo). orderBy garante que "hoje" vence se os dois existirem.
-    prisma.sleepEntry.findFirst({ where: { userId, date: { in: [dateKey, yesterday] } }, orderBy: { date: "desc" } }),
+    // Estritamente hoje, igual calorias e água: sono precisa zerar todo dia. A tentativa anterior de
+    // também aceitar "ontem" (pra corrigir um typo depois da virada do dia) tinha um efeito colateral
+    // pior — editar salvava por id no registro antigo sem nunca criar um novo pro dia atual, e a tela
+    // parecia "travada" mostrando sempre o mesmo sono desatualizado. O bug original que motivou aquilo
+    // era o fuso horário calculando "hoje" errado no servidor, já corrigido em lib/date.ts.
+    prisma.sleepEntry.findFirst({ where: { userId, date: dateKey } }),
     prisma.workoutLog.findFirst({ where: { userId, date: yesterday }, select: { id: true } }),
   ]);
 

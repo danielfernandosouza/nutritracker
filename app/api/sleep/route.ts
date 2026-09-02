@@ -8,14 +8,8 @@ export async function GET(request: NextRequest) {
 
   const date = request.nextUrl.searchParams.get("date");
   if (!date) return NextResponse.json({ error: "date is required" }, { status: 400 });
-  // fallbackDate: sono é registrado depois de acordar, então pode não existir ainda um registro
-  // "de hoje" — sem isso, o de ontem fica inacessível para edição assim que a data vira.
-  const fallbackDate = request.nextUrl.searchParams.get("fallbackDate");
 
-  const entry = await prisma.sleepEntry.findFirst({
-    where: { userId: session.user.id, date: fallbackDate ? { in: [date, fallbackDate] } : date },
-    orderBy: { date: "desc" },
-  });
+  const entry = await prisma.sleepEntry.findFirst({ where: { userId: session.user.id, date } });
   return NextResponse.json({ entry });
 }
 
@@ -39,11 +33,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ entry }, { status: existing ? 200 : 201 });
 }
 
-/**
- * Edita um registro existente por id, sem depender da data atual. A POST acima só encontra o
- * registro de "hoje" — assim que a data vira, o sono de ontem some da tela e uma correção via POST
- * criaria um registro novo em vez de consertar o antigo. Editar por id resolve isso.
- */
+/** Edita um registro existente por id — mesmo padrão já usado em peso e refeições. */
 export async function PUT(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

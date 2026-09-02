@@ -80,7 +80,6 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
   const dateKey = toDateKey(today);
   const weekStart = lastDateKeys(7, today)[0];
   const weightHistoryStart = lastDateKeys(21, today)[0];
-  const yesterdayKey = lastDateKeys(2, today)[0];
 
   async function loadAll() {
     setLoadError(false);
@@ -94,7 +93,7 @@ export function HomeClient({ initial }: { initial: HomeInitialData }) {
         fetch(`/api/weight?from=${weightHistoryStart}`),
         fetch("/api/workout-log"),
         fetch(`/api/water?date=${dateKey}`),
-        fetch(`/api/sleep?date=${dateKey}&fallbackDate=${yesterdayKey}`),
+        fetch(`/api/sleep?date=${dateKey}`),
       ]);
       if (!weekRes.ok) throw new Error("meals request failed");
       const weekJson = await weekRes.json();
