@@ -10,6 +10,7 @@ import { EMPTY_MEAL_INPUT, type MealInput } from "@/lib/types";
 import { useCameraStream, type CameraShot } from "@/lib/useCameraStream";
 import { downscaleImageFile } from "@/lib/image";
 import { HealthScoreMedal, medalTierForScore, medalTierLabel } from "@/components/HealthScoreMedal";
+import { MicButton } from "@/components/MicButton";
 
 type Stage = "idle" | "review" | "scanning" | "result" | "error";
 
@@ -73,6 +74,8 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
   const [errorMessage, setErrorMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { videoRef, ready: cameraReady, error: cameraError, capture } = useCameraStream(open && stage === "idle");
@@ -87,6 +90,8 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     setMeal(EMPTY_MEAL_INPUT);
     setNote("");
     setSaveError(null);
+    setCorrectionOpen(false);
+    setCorrectionText("");
   }
 
   function handleCloseAll() {
@@ -109,8 +114,14 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function analyze() {
+  /**
+   * `extraNote` é usado na reanálise a partir do resultado (ex: "faltou o feijão") — a foto é
+   * reenviada junto com a observação original combinada com a nova, então a IA reconsidera o
+   * prato inteiro com o adendo em vez de simplesmente somar um item avulso.
+   */
+  async function analyze(extraNote?: string) {
     if (photos.length === 0) return;
+    const combinedNote = [note.trim(), extraNote?.trim()].filter(Boolean).join(". ");
     setResultPhoto(photos[0].dataUrl);
     setStage("scanning");
 
@@ -136,7 +147,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
         body: JSON.stringify({
           images: photos.map((p) => ({ data: p.data, mediaType: p.mediaType })),
           dayTotals,
-          note: note.trim() || undefined,
+          note: combinedNote || undefined,
         }),
       });
       const json = await res.json();
@@ -147,7 +158,10 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
         return;
       }
 
+      if (combinedNote) setNote(combinedNote);
       setMeal({ ...EMPTY_MEAL_INPUT, ...json.data });
+      setCorrectionOpen(false);
+      setCorrectionText("");
       setStage("result");
     } catch {
       setErrorMessage("Não consegui conectar à API. Tente novamente.");
@@ -300,9 +314,12 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
             )}
           </div>
 
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-dim">
-            Observação (opcional)
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-dim">
+              Observação (opcional)
+            </label>
+            <MicButton value={note} onChange={setNote} label="Ditar observação" />
+          </div>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -314,7 +331,7 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="flex-1" />
 
           <button
-            onClick={analyze}
+            onClick={() => analyze()}
             disabled={photos.length === 0}
             className="font-display flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C] disabled:opacity-50"
           >
@@ -455,10 +472,56 @@ export function CameraFlow({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
           )}
 
+          {correctionOpen ? (
+            <div className="mt-5 rounded-2xl border border-line bg-panel p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[13px] font-bold">O que faltou ou está errado?</span>
+                <MicButton value={correctionText} onChange={setCorrectionText} label="Ditar correção" />
+              </div>
+              <textarea
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                placeholder='Ex: "faltou o feijão", "a porção de arroz é bem maior que isso"...'
+                rows={2}
+                autoFocus
+                className="mb-3 w-full resize-none rounded-xl border border-line bg-track px-3.5 py-3 text-sm outline-none focus:border-accent"
+              />
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => {
+                    setCorrectionOpen(false);
+                    setCorrectionText("");
+                  }}
+                  className="flex-1 rounded-xl border border-line py-3 text-sm font-bold text-dim"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    if (!correctionText.trim()) return;
+                    // Troca pra tela de "scanning" na hora — não precisa de loading próprio aqui.
+                    analyze(correctionText);
+                  }}
+                  disabled={!correctionText.trim()}
+                  className="font-display flex-[2] rounded-xl bg-accent py-3 text-sm font-bold text-[#0B0B0C] disabled:opacity-60"
+                >
+                  Reanalisar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setCorrectionOpen(true)}
+              className="mt-5 flex w-full items-center justify-center gap-1.5 text-[13px] font-semibold text-dim underline"
+            >
+              Algo errado ou faltando? Corrigir e reanalisar
+            </button>
+          )}
+
           <button
             onClick={handleConfirm}
             disabled={saving}
-            className="font-display mt-5 w-full rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C] disabled:opacity-60"
+            className="font-display mt-4 w-full rounded-xl bg-accent py-4 text-[15px] font-bold text-[#0B0B0C] disabled:opacity-60"
           >
             {saving ? "Salvando..." : "Adicionar à refeição"}
           </button>
